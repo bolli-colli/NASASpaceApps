@@ -15,3 +15,6 @@ __pycache__/
 
 # Artificial development data (scripts/make_synthetic_cache.py)
 data/synthetic/
+
+# Hand-downloaded CSV exports (Giovanni, AppEEARS) before the import
+data/raw/

@@ -13,3 +13,7 @@ How to fill this folder is described in the main [README](../README.md#4-filling
 
 `synthetic/` (ignored by git) holds artificial development data created by
 `scripts/make_synthetic_cache.py`. It must never be copied into this folder.
+
+`raw/` (ignored by git) is the place for hand-downloaded CSV exports from Giovanni or
+AppEEARS. Import them with `scripts/import_csv.py`; only the resulting Parquet files in
+this folder are committed.
