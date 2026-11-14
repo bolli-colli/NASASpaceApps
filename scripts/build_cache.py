@@ -7,7 +7,7 @@ cos(latitude)-weighted area means and stores it as Parquet in ``data/``.
 Needs the "live" extra and an Earthdata token:
 
     pip install -e ".[live]"
-    export EARTHDATA_TOKEN="..."          # PowerShell: $env:EARTHDATA_TOKEN="..."
+    cp .env.example .env                  # then fill in EARTHDATA_TOKEN
     python scripts/build_cache.py --demo A1 --start 2000-01
 
 Variables without scripted access are listed at the end; export them by hand

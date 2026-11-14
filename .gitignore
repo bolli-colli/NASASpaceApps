@@ -18,3 +18,5 @@ data/synthetic/
 
 # Hand-downloaded CSV exports (Giovanni, AppEEARS) before the import
 data/raw/
+.idea
+data-connection-repos/

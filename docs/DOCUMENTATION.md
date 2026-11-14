@@ -291,8 +291,12 @@ During a presentation nothing is fetched: demos read `data/` only.
 
 1. Free account: <https://urs.earthdata.nasa.gov/users/new>.
 2. Profile → *Generate Token*.
-3. Provide it as environment variable `EARTHDATA_TOKEN`, or in `.streamlit/secrets.toml`
-   (copied to the environment on start-up by `presentation/main.py`).
+3. Provide it as `EARTHDATA_TOKEN` in one of three places (first one found wins):
+   1. an environment variable of the shell;
+   2. a `.env` file in the project root (copy `.env.example`), read by
+      `config.load_env_file()` in `build_container` – so the app and every script see it;
+   3. `.streamlit/secrets.toml` (copied to the environment on start-up by
+      `presentation/main.py`, app only).
 
 The token is read on the server only. It is never typed into the browser, never logged
 and never committed (`.gitignore` covers `.streamlit/secrets.toml` and `.env`).
@@ -375,6 +379,9 @@ missing values, plausible range. For one box compare the area mean with Giovanni
 | Variable | Meaning | Default |
 |----------|---------|---------|
 | `EARTHDATA_TOKEN` | Earthdata Login token for live access and `build_cache.py` | – |
+
+All of them can also be set in `.env` (template: `.env.example`); a variable set in the
+shell wins over the file.
 | `ETD_DATA_DIR` | folder of the data cache | `data/` |
 | `ETD_CATALOG_DIR` | folder of the YAML catalog | `catalog/` |
 
@@ -443,8 +450,8 @@ export EARTHDATA_TOKEN="..."            # for the whole terminal session
 ETD_DATA_DIR=data/synthetic streamlit run app.py    # for one command only
 ```
 
-To keep a variable permanently, add the `export` line to `~/.bashrc` (Linux, Git Bash)
-or `~/.zshrc` (macOS).
+To keep a variable permanently, write it into `.env` in the project root
+(`cp .env.example .env`). That works the same on every operating system.
 
 ### 5.6 PowerShell equivalents
 
@@ -468,7 +475,7 @@ Remove-Item Env:ETD_DATA_DIR            # unset again
 | `error: externally-managed-environment` (Linux) | you are installing outside the virtual environment – activate it first |
 | Port 8501 in use | `streamlit run app.py --server.port 8502` |
 | Every card says "Not in the offline cache" | fill `data/` (README section 4) or use the synthetic cache |
-| Live mode is greyed out | `EARTHDATA_TOKEN` is not set in the terminal that started the app |
+| Live mode is greyed out | `EARTHDATA_TOKEN` is not set: fill it in `.env` (or the shell) and restart the app |
 
 ---
 

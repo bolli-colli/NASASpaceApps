@@ -21,16 +21,20 @@ OUTCOME_KEY = "outcome"  # session entry: (request, trails) of the last run
 
 @st.cache_resource
 def _container() -> Container:
-    """Wire the application once per server process."""
+    """Wire the application once per server process.
+
+    Token precedence: shell environment, then ``.env``, then ``st.secrets``.
+    """
+    container = build_container()
     _export_token_from_secrets()
-    return build_container()
+    return container
 
 
 def _export_token_from_secrets() -> None:
     """Copy the Earthdata token from ``st.secrets`` to the environment.
 
-    The token is read on the server only (environment variable or secrets
-    file) and is never asked for or shown in the browser (spec 14).
+    The token is read on the server only (environment variable, ``.env`` or
+    secrets file) and is never asked for or shown in the browser (spec 14).
     """
     if os.environ.get(TOKEN_VARIABLE):
         return

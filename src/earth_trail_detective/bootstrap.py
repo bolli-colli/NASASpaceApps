@@ -11,7 +11,7 @@ from earth_trail_detective.application.ports import LiveDataGateway, SeriesSourc
 from earth_trail_detective.application.sources import DerivedSeriesSource, LiveSeriesSource
 from earth_trail_detective.application.trail import TrailBuilder
 from earth_trail_detective.application.trend_analysis import TrendAnalyzer
-from earth_trail_detective.config import TOKEN_VARIABLE, Settings
+from earth_trail_detective.config import TOKEN_VARIABLE, Settings, load_env_file
 from earth_trail_detective.domain.models import Period
 from earth_trail_detective.infrastructure.earthaccess_gateway import EarthaccessGateway
 from earth_trail_detective.infrastructure.parquet_repository import ParquetSeriesRepository
@@ -48,7 +48,11 @@ class Container:
 
 
 def build_container(settings: Settings | None = None) -> Container:
-    """Wire the application with the default adapters."""
+    """Wire the application with the default adapters.
+
+    Reads ``.env`` first, so the app and all scripts see the same variables.
+    """
+    load_env_file()
     settings = settings or Settings.from_environment()
     return Container(
         settings=settings,

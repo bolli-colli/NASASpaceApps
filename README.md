@@ -106,16 +106,18 @@ All NASA data needs a free **Earthdata Login**.
    *Approve More Applications* → **NASA GESDISC DATA ARCHIVE**.
 4. Giovanni and AppEEARS (section 4b) need the same account: click *Login* on their
    pages before you plot or download.
-5. Make the token available as an environment variable – never write it into the code
-   and never commit it:
+5. Put the token into a `.env` file – never write it into the code and never commit it
+   (`.env` is ignored by git):
 
    ```bash
-   export EARTHDATA_TOKEN="paste-your-token-here"      # Linux / macOS / Git Bash
-   $env:EARTHDATA_TOKEN="paste-your-token-here"        # PowerShell
+   cp .env.example .env          # PowerShell: Copy-Item .env.example .env
+   # then open .env and fill in: EARTHDATA_TOKEN=paste-your-token-here
    ```
 
-   For the running app you can alternatively copy `.streamlit/secrets.toml.example` to
-   `.streamlit/secrets.toml` (ignored by git) and put the token there.
+   The app and all scripts read `.env` on start. Alternatives: an environment variable
+   (`export EARTHDATA_TOKEN="..."`, PowerShell `$env:EARTHDATA_TOKEN="..."`), which wins
+   over `.env`, or `.streamlit/secrets.toml` (copy `.streamlit/secrets.toml.example`),
+   which is used only if neither of the other two is set.
 
 ### 4a. Scripted: MERRA-2, GLDAS, IMERG, OCO-2 GEOS
 

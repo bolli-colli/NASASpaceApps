@@ -73,7 +73,7 @@ def render_researcher_form(catalog: Catalog, has_token: bool) -> AnalysisRequest
             "Data source",
             [SOURCE_CACHE, SOURCE_LIVE],
             disabled=not has_token,
-            help="Live access needs the environment variable EARTHDATA_TOKEN (see README). "
+            help="Live access needs EARTHDATA_TOKEN in the environment or in .env (see README). "
             "It reads one file per month and can take minutes - choose a short period.",
         )
         left, right = st.columns(2)
