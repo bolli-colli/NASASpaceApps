@@ -386,6 +386,7 @@ variables:
     variable: UVAerosolIndex
     substance: [dust, smoke]
     step: air
+    coverage: global, 1°   # coarser than the other OMI products
     source_url: https://disc.gsfc.nasa.gov/datasets/OMAERUVd_003/summary
     <<: *omi_csv
 
