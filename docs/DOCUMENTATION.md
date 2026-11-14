@@ -432,9 +432,30 @@ python scripts/build_cache.py --demo A1 --start 2020-01 --end 2020-12   # a quic
 ```
 
 `build_cache.py` works product by product and saves each one as soon as it is complete.
+The logic lives in `application/cache_filler.py` (`CacheFiller`), which the app uses too:
 Series that are already in `data/` are skipped, so an interrupted run is simply started
 again; `--refresh` reloads everything. Products that failed are listed at the end and the
 script exits with status 1.
+
+#### Filling the cache from the app (`ETD_FETCH`)
+
+With `ETD_FETCH=missing` (or `refresh`) in `.env` and a token, the app fills the cache
+itself – the same `CacheFiller` as the script:
+
+| `ETD_FETCH` | Behaviour |
+|---|---|
+| `off` (default) | Cache only. Missing series show "Not in the offline cache" with a hint. Use this for the pitch, judges and any public deployment. |
+| `missing` | Before an analysis runs, every series it needs but the cache lacks is fetched (whole record, grouped by NASA product) and saved; a progress box shows each product. |
+| `refresh` | Like `missing`, plus a button **"Update this analysis from NASA"** under the results that fetches all shown series again. |
+
+- Only catalog regions are cached; custom boxes stay live-only (researcher mode, "Live").
+- Products without scripted access (MODIS, AIRS CO, CYGNSS) are never fetched; their
+  cards point to `scripts/import_csv.py`.
+- An invalid value (e.g. `ETD_FETCH=yes`) stops the app with a configuration error.
+- Without a token the setting has no effect; the sidebar says so.
+- The whole record is fetched even if the analysis looks at a few years, so the cache
+  never holds a shortened series. First fetch of a MERRA-2 product: about 10–15 minutes
+  per region.
 
 ### 4.4 Manual export + import
 
@@ -480,6 +501,7 @@ missing values, plausible range. For one box compare the area mean with Giovanni
 | Variable | Meaning | Default |
 |----------|---------|---------|
 | `EARTHDATA_TOKEN` | Earthdata Login token for live access and `build_cache.py` | – |
+| `ETD_FETCH` | may the app fill the cache itself: `off` (cache only), `missing` (fetch what an analysis lacks and save it), `refresh` (also an "Update from NASA" button); needs the token | `off` |
 
 All of them can also be set in `.env` (template: `.env.example`); a variable set in the
 shell wins over the file.
@@ -575,7 +597,7 @@ Remove-Item Env:ETD_DATA_DIR            # unset again
 | `zsh: no matches found: .[dev]` | put the argument in quotes: `pip install -e ".[dev]"` |
 | `error: externally-managed-environment` (Linux) | you are installing outside the virtual environment – activate it first |
 | Port 8501 in use | `streamlit run app.py --server.port 8502` |
-| Every card says "Not in the offline cache" | fill `data/` (README section 4) or use the synthetic cache |
+| Every card says "Not in the offline cache" | fill `data/` (README section 4), set `ETD_FETCH=missing` with a token and restart, or use the synthetic cache |
 | Live mode is greyed out | `EARTHDATA_TOKEN` is not set: fill it in `.env` (or the shell) and restart the app |
 
 ---

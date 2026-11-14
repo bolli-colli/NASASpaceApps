@@ -5,7 +5,12 @@ import importlib.util
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from earth_trail_detective.config import DATA_DIR_VARIABLE, PROJECT_ROOT
+from earth_trail_detective.config import (
+    DATA_DIR_VARIABLE,
+    FETCH_VARIABLE,
+    PROJECT_ROOT,
+    TOKEN_VARIABLE,
+)
 from earth_trail_detective.infrastructure.parquet_repository import ParquetSeriesRepository
 from earth_trail_detective.presentation.main import MODE_RESEARCHER
 
@@ -34,6 +39,8 @@ def app(tmp_path, monkeypatch, catalog) -> AppTest:
                 region = catalog.region(region_id)
                 repository.save(variable, region, generator.synthetic_series(variable, region))
     monkeypatch.setenv(DATA_DIR_VARIABLE, str(tmp_path))
+    # Never fetch from NASA in tests, whatever a developer's .env says.
+    monkeypatch.setenv(FETCH_VARIABLE, "off")
     from earth_trail_detective.presentation.main import _container
 
     _container.clear()  # do not reuse a container wired to another directory
@@ -79,3 +86,26 @@ def test_validation_demo_shows_the_reference_check(app):
     app.sidebar.button[0].click().run()
     assert not app.exception
     assert "Check against the known trend" in _text(app)
+
+
+def _restart(monkeypatch, **variables) -> AppTest:
+    """Start the app again with other environment variables (empty cache is fine)."""
+    for name, value in variables.items():
+        monkeypatch.setenv(name, value)
+    from earth_trail_detective.presentation.main import _container
+
+    _container.clear()
+    return AppTest.from_file(APP, default_timeout=TIMEOUT).run()
+
+
+def test_fetch_setting_without_token_says_the_cache_is_used(app, monkeypatch):
+    # An empty token in the environment wins over a token in a developer's .env.
+    started = _restart(monkeypatch, **{FETCH_VARIABLE: "missing", TOKEN_VARIABLE: ""})
+    assert not started.exception
+    warnings = "\n".join(str(element.value) for element in started.sidebar.warning)
+    assert "ETD_FETCH=missing" in warnings and "offline cache only" in warnings
+
+
+def test_invalid_fetch_setting_stops_with_a_clear_message(app, monkeypatch):
+    started = _restart(monkeypatch, **{FETCH_VARIABLE: "yes"})
+    assert "Configuration error" in _text(started)

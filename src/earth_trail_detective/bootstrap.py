@@ -7,6 +7,7 @@ app and the command line scripts both start from ``build_container``.
 import os
 from dataclasses import dataclass
 
+from earth_trail_detective.application.cache_filler import CacheFiller
 from earth_trail_detective.application.ports import LiveDataGateway, SeriesSource
 from earth_trail_detective.application.sources import (
     DerivedSeriesSource,
@@ -15,7 +16,7 @@ from earth_trail_detective.application.sources import (
 )
 from earth_trail_detective.application.trail import TrailBuilder
 from earth_trail_detective.application.trend_analysis import TrendAnalyzer
-from earth_trail_detective.config import TOKEN_VARIABLE, Settings, load_env_file
+from earth_trail_detective.config import TOKEN_VARIABLE, FetchPolicy, Settings, load_env_file
 from earth_trail_detective.domain.models import Period
 from earth_trail_detective.infrastructure.earthaccess_gateway import EarthaccessGateway
 from earth_trail_detective.infrastructure.giovanni_gateway import GiovanniGateway
@@ -47,10 +48,19 @@ class Container:
         """Trail builder that fetches from NASA Earthdata for the given period."""
         return self._builder(LiveSeriesSource(self.gateway, period))
 
+    def cache_filler(self) -> CacheFiller:
+        """Fills the offline cache from NASA (build script and ``ETD_FETCH``)."""
+        return CacheFiller(self.catalog, self.repository, self.gateway)
+
     @property
     def has_token(self) -> bool:
         """True if an Earthdata token is configured in the environment."""
         return bool(os.environ.get(TOKEN_VARIABLE))
+
+    @property
+    def can_fetch(self) -> bool:
+        """True if the app may fill missing cache entries itself (ETD_FETCH + token)."""
+        return self.settings.fetch is not FetchPolicy.OFF and self.has_token
 
 
 def build_container(settings: Settings | None = None) -> Container:

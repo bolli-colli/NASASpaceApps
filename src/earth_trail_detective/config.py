@@ -7,6 +7,7 @@ a variable that is already set in the shell always wins.
 
 import os
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 
 # Repository root: <root>/src/earth_trail_detective/config.py
@@ -15,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CATALOG_DIR_VARIABLE = "ETD_CATALOG_DIR"
 DATA_DIR_VARIABLE = "ETD_DATA_DIR"
 TOKEN_VARIABLE = "EARTHDATA_TOKEN"  # Earthdata Login token for live access
+FETCH_VARIABLE = "ETD_FETCH"  # may the app fetch missing data itself? (FetchPolicy)
 ENV_FILE = PROJECT_ROOT / ".env"  # optional, ignored by git
 
 
@@ -56,17 +58,43 @@ def _directory(variable: str, default: Path) -> Path:
     return Path(value).expanduser().resolve() if value else default
 
 
+class FetchPolicy(StrEnum):
+    """Whether the app itself may fill the offline cache from NASA (``ETD_FETCH``).
+
+    Fetching always needs ``EARTHDATA_TOKEN`` as well.
+    """
+
+    OFF = "off"  # read the cache only (default: demos, judges, public deployments)
+    MISSING = "missing"  # fetch series an analysis needs but the cache lacks
+    REFRESH = "refresh"  # like MISSING, plus an "update from NASA" button
+
+
+def _fetch_policy() -> FetchPolicy:
+    value = os.environ.get(FETCH_VARIABLE, "").strip().lower()
+    if not value:
+        return FetchPolicy.OFF
+    try:
+        return FetchPolicy(value)
+    except ValueError:
+        allowed = ", ".join(policy.value for policy in FetchPolicy)
+        raise ValueError(
+            f"{FETCH_VARIABLE}={value!r} is not valid; use one of: {allowed}."
+        ) from None
+
+
 @dataclass(frozen=True)
 class Settings:
-    """Where the catalog and the data cache live."""
+    """Where the catalog and the data cache live, and whether the app may fetch."""
 
     catalog_dir: Path
     data_dir: Path
+    fetch: FetchPolicy = FetchPolicy.OFF
 
     @classmethod
     def from_environment(cls) -> "Settings":
-        """Build the settings; both directories can be overridden by variables."""
+        """Build the settings from environment variables (and ``.env``)."""
         return cls(
             catalog_dir=_directory(CATALOG_DIR_VARIABLE, PROJECT_ROOT / "catalog"),
             data_dir=_directory(DATA_DIR_VARIABLE, PROJECT_ROOT / "data"),
+            fetch=_fetch_policy(),
         )

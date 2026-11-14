@@ -12,6 +12,7 @@ from earth_trail_detective.domain.models import Region, VariableSpec
 from earth_trail_detective.domain.series import MonthlySeries
 
 _SEPARATOR = "__"
+_MANUAL_PROVIDER = "csv"  # access.provider of products without scripted access
 _SUFFIX = ".parquet"
 
 
@@ -35,4 +36,14 @@ class ParquetSeriesRepository:
         series.to_frame().to_parquet(self._path(variable, region), index=False)
 
     def explain_missing(self, variable: VariableSpec) -> str:
-        return "Not in the offline cache for this region (see README, 'Filling the data cache')."
+        access = variable.access
+        if access is None or access.provider == _MANUAL_PROVIDER:
+            where = f" Source: {access.hint}" if access and access.hint else ""
+            return (
+                "Not in the offline cache for this region. This product is imported by hand: "
+                f"export a CSV and load it with scripts/import_csv.py.{where}"
+            )
+        return (
+            "Not in the offline cache for this region. Fill it with scripts/build_cache.py, "
+            "or set ETD_FETCH=missing (with a token) to let the app fetch it."
+        )

@@ -144,7 +144,11 @@ Three NASA routes are used, chosen per product in the catalog (`access.provider`
 - **earthaccess** for OCO-2 GEOS, which Harmony does not serve: one whole file per month
   is read over the network (about a minute per file).
 
-**Start with the quick trial** to see that your token and approvals work. Every product is saved as soon as it is
+**Start with the quick trial** to see that your token and approvals work.
+
+The app can also fill the cache itself: set `ETD_FETCH=missing` in `.env` and it fetches
+what an analysis needs (or `refresh` for an extra "Update from NASA" button). Default is
+`off` – cache only. Details: `docs/DOCUMENTATION.md`, section 4. Every product is saved as soon as it is
 complete and cached series are skipped, so an interrupted run can simply be started again.
 
 ### 4b. By hand: MODIS, AIRS, CYGNSS (and OMI as a fallback)
