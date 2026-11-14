@@ -54,7 +54,7 @@ application/
   ports.py            Catalog, SeriesSource, SeriesStore, LiveDataGateway (Protocols)
   options.py          AnalysisOptions, AnalysisRequest
   ingest.py           raw values -> MonthlySeries (monthly mean + unit harmonisation)
-  sources.py          DerivedSeriesSource (sum / ratio), LiveSeriesSource
+  sources.py          DerivedSeriesSource (sum / ratio), LiveSeriesSource, RoutingGateway
   trend_analysis.py   TrendAnalyzer – the statistics pipeline
   trail.py            TrailBuilder – cards for a substance or for free variables
   comparison.py       two-region comparison, reference check (validation case)
@@ -66,7 +66,10 @@ infrastructure/
   parquet_repository.py  offline cache
   csv_import.py       Giovanni / plain CSV reader
   grid_reduction.py   one gridded file -> area mean of a box
-  earthaccess_gateway.py  NASA Earthdata access
+  gridded_gateway.py  shared skeleton of the NASA gateways (template method)
+  harmony_gateway.py  MERRA-2, GLDAS, IMERG, OMI via NASA Harmony (server-side subsetting)
+  earthaccess_gateway.py  products without a Harmony service (OCO-2 GEOS): whole files
+  hoss_reader.py      reads the subset files Harmony returns
 presentation/
   main.py             page layout and control flow
   student_form.py, researcher_form.py, form_widgets.py
@@ -141,9 +144,10 @@ result_view.render_results ─► cards side by side, comparison text, exports
 |---------|----------|
 | **earthaccess** | NASA's library for Earthdata: login with a token, search granules in the Common Metadata Repository (CMR), open files over HTTPS. |
 | **xarray** | Opens a netCDF-4/HDF5 file as labelled arrays (`lat`, `lon`), so a box can be selected by coordinates. |
-| **h5netcdf** | The xarray engine that can read netCDF-4/HDF5 from a remote file object. |
+| **h5netcdf** + **h5py** | The xarray engine that reads netCDF-4/HDF5, also from a remote file object; h5py is the HDF5 library underneath. |
+| **harmony-py** | Client for NASA Harmony: submits a subsetting job (collection, variables, bounding box, period), waits for it and downloads the results. |
 
-These are imported lazily inside `earthaccess_gateway.py`; the app runs offline without them.
+These are imported lazily inside the gateway modules; the app runs offline without them.
 
 ### Development – extra `dev`
 
@@ -278,11 +282,11 @@ A catalog entry can be computed from others (`derivation: {operation, inputs}`):
 ### 4.1 Overview
 
 ```
-                     ┌─ scripts/build_cache.py ── EarthaccessGateway ─┐
-NASA Earthdata ──────┤                                                ├──► data/*.parquet ──► app
- (token needed)      └─ Giovanni / AppEEARS CSV ── scripts/import_csv.py ┘      (offline)
+                     ┌─ scripts/build_cache.py ─┬─ HarmonyGateway (region subsets) ────┐
+NASA Earthdata ──────┤                          └─ EarthaccessGateway (whole files) ───┼──► data/*.parquet ──► app
+ (token needed)      └─ Giovanni / AppEEARS CSV ── scripts/import_csv.py ───────────────┘      (offline)
 
-Researcher mode, "Live": EarthaccessGateway ──► app   (no file is written)
+Researcher mode, "Live": the same two gateways ──► app   (no file is written)
 ```
 
 During a presentation nothing is fetched: demos read `data/` only.
@@ -301,7 +305,65 @@ During a presentation nothing is fetched: demos read `data/` only.
 The token is read on the server only. It is never typed into the browser, never logged
 and never committed (`.gitignore` covers `.streamlit/secrets.toml` and `.env`).
 
-### 4.3 Scripted access with earthaccess
+### 4.3 Scripted access
+
+Two gateways fetch data; the catalog says per product which one (`access.provider`).
+
+| Provider | Products | How |
+|----------|----------|-----|
+| `harmony` | MERRA-2, GLDAS, GPM IMERG, OMI (`OMSO2e`, `OMNO2d`, `OMAERUVd`) | NASA's servers cut the region box and the wanted variables out of every file; only the small results are downloaded. |
+| `earthaccess` | OCO-2 GEOS (`OCO2_GEOS_L3CO2_MONTH`) | Harmony offers no service for it, so whole files are read over the network. |
+
+Harmony is preferred wherever it is offered. Measured on 2026-11-14 for eight monthly
+MERRA-2 files and three variables: 28 s through Harmony, 396 s by reading whole files –
+with identical area means, because the same averaging code runs on the subset.
+
+#### Harmony (server-side subsetting)
+
+**NASA Harmony** (<https://harmony.earthdata.nasa.gov>) does the heavy part on the server:
+its HOSS service cuts the bounding box and the wanted variables out of every file and
+returns small netCDF files. That matters most for the daily OMI Level-3 products – about
+7,700 HDF-EOS5 files per product since 2004. `HarmonyGateway` in essence:
+
+```python
+from harmony import BBox, Client, Collection, Request
+
+client = Client(token=os.environ["EARTHDATA_TOKEN"])
+request = Request(
+    collection=Collection(id="C1266136112-GES_DISC"),  # looked up in CMR: OMSO2e, version 003
+    spatial=BBox(-88, 37, -80, 42),  # west, south, east, north
+    temporal={"start": datetime(2020, 1, 1), "stop": datetime(2020, 12, 31)},
+    variables=["HDFEOS/GRIDS/OMI_Total_Column_Amount_SO2/Data_Fields/ColumnAmountSO2"],
+)
+job_id = client.submit(request)
+client.wait_for_processing(job_id)
+for link in client.result_json(job_id)["links"]:  # one small file per day or month
+    ...  # download, cos(lat)-weighted mean, delete
+```
+
+- Short name, version and optional HDF5 group come from the `access` block of the
+  catalog entry. A variable is named by its path inside the file: the group, if any,
+  plus the variable name (`Grid/precipitation`; plain `SO4CMASS` for MERRA-2).
+- The collection id is looked up in CMR by short name **and version**, so the version of
+  the catalog is used (both 003 and 004 exist for SO₂ and NO₂).
+- One job per region and calendar year keeps every job below about 366 files. All
+  variables of a product go into the same job.
+- Lists such as `[SUWT001, …, SUWT004]` are summed (species or size bins).
+- The time of each file comes from the job result (`temporal.start`), not from the file:
+  files are opened with `decode_times=False`, because IMERG uses a calendar that xarray
+  cannot decode without extra packages.
+- The result files of a job are downloaded in parallel: harmony-py reads the number of
+  workers from the environment variable `NUM_REQUESTS_WORKERS` (its default is 3; the
+  gateway sets 8 unless the variable is already set).
+- `hoss_reader.load_grid` searches the returned file for the variable and its
+  latitude/longitude arrays instead of assuming one layout; if it cannot find them, the
+  error message prints the structure of the file.
+- The subset may be slightly larger than the box; `area_mean` keeps only the cells whose
+  centre lies inside, exactly as for whole files.
+- Which services Harmony offers for a product can be checked without login:
+  `https://harmony.earthdata.nasa.gov/capabilities?shortName=OMSO2e`.
+
+#### earthaccess (whole files)
 
 What `EarthaccessGateway.fetch` does, reduced to its essence:
 
@@ -311,35 +373,41 @@ import earthaccess, xarray as xr
 earthaccess.login(strategy="environment")  # uses EARTHDATA_TOKEN
 
 granules = earthaccess.search_data(  # one granule = one monthly file
-    short_name="M2TMNXAER",
-    version="5.12.4",
-    temporal=("2000-01-01", "2024-12-31"),
+    short_name="OCO2_GEOS_L3CO2_MONTH",
+    version="10r",
+    temporal=("2015-01-01", "2024-12-31"),
 )
 for granule, handle in zip(granules, earthaccess.open(granules)):  # HTTPS, no download
-    with xr.open_dataset(handle, engine="h5netcdf") as dataset:
-        value = area_mean(dataset, ("SO4CMASS",), region.bbox)  # cos(lat) weighted
+    with xr.open_dataset(handle, engine="h5netcdf", decode_times=False) as dataset:
+        value = area_mean(dataset, ("XCO2",), region.bbox)  # cos(lat) weighted
 ```
 
-- Short name, version and optional HDF5 group come from the `access` block of the
-  catalog entry.
-- Variables of the same product share their files: each file is opened once for all
-  variables and regions.
-- Lists such as `[SUWT001, …, SUWT004]` are summed (species or size bins).
-- The month of a file is taken from its CMR metadata.
-- `build_series` then converts the unit and builds the `MonthlySeries`.
+- Each file is opened once for all variables and regions; the month of a file is taken
+  from its CMR metadata.
+- Works for any regular lat/lon netCDF-4/HDF5 grid with one file per month, so a product
+  can be switched back to `provider: earthaccess` in the catalog if Harmony is down –
+  at roughly one minute per file.
 
-Works for regular lat/lon netCDF-4/HDF5 grids: **MERRA-2, GLDAS, GPM IMERG, OCO-2 GEOS**.
+In both cases `build_series` then converts the unit and builds the `MonthlySeries`.
+
+#### Filling the cache
 
 ```bash
 pip install -e ".[live]"
-export EARTHDATA_TOKEN="..."
-python scripts/build_cache.py --demo A1 --start 2000-01 --end 2024-12
+cp .env.example .env                     # then fill in EARTHDATA_TOKEN
+python scripts/build_cache.py            # all demos, full record of every product
+python scripts/build_cache.py --demo A1 --start 2020-01 --end 2020-12   # a quick trial
 ```
+
+`build_cache.py` works product by product and saves each one as soon as it is complete.
+Series that are already in `data/` are skipped, so an interrupted run is simply started
+again; `--refresh` reloads everything. Products that failed are listed at the end and the
+script exits with status 1.
 
 ### 4.4 Manual export + import
 
-**OMI, MODIS, AIRS and CYGNSS** files are HDF-EOS/HDF4 swaths or tiles without simple
-lat/lon coordinates. For them, NASA's own tools do the area averaging:
+**MODIS, AIRS and CYGNSS** have no scripted access here. For them – and for OMI, should
+Harmony fail – NASA's own tools do the area averaging:
 
 - **Giovanni** (<https://giovanni.gsfc.nasa.gov/giovanni/>): plot type
   *Time Series, Area-Averaged* → choose variable, box, period → download CSV.
@@ -514,7 +582,7 @@ the 3-minute user test and the offline test with Wi-Fi switched off.
 | Topic | Status |
 |-------|--------|
 | Demo data | The repository ships **no** NASA data; `data/` must be filled once with a token (section 4). |
-| Live access | Implemented with earthaccess over HTTPS for MERRA-2, GLDAS, IMERG and OCO-2 GEOS. Not via the Giovanni time-series API (single points only). Written against the library documentation; **not yet run against the NASA servers**, because that needs a token. |
+| Live access | Implemented with NASA Harmony (MERRA-2, GLDAS, IMERG, OMI SO₂, NO₂, aerosol index) and earthaccess (OCO-2 GEOS). Not via the Giovanni time-series API (single points only). Smoke-tested against the NASA servers on 2026-11-14 for one region (Ohio Valley) and a few months of 2020: all six product families return values, and for MERRA-2, GLDAS and IMERG the Harmony route gives the same area means as reading whole files. A cache build over the full record has **not yet completed**. |
 | Giovanni data ID in the researcher form | Not implemented, for the same reason (point series only; ID format unverified). |
 | Custom bounding boxes | Only with live access; the cache holds area means of fixed regions. |
 | PNG export | Via the Plotly toolbar of each chart, not a separate button. |

@@ -4,8 +4,14 @@ import os
 
 from earth_trail_detective.config import PROJECT_ROOT, load_env_file
 
-KEYS = ("ETD_TEST_PLAIN", "ETD_TEST_QUOTED", "ETD_TEST_EXPORT", "ETD_TEST_COMMENT",
-        "ETD_TEST_EMPTY", "ETD_TEST_SHELL")
+KEYS = (
+    "ETD_TEST_PLAIN",
+    "ETD_TEST_QUOTED",
+    "ETD_TEST_EXPORT",
+    "ETD_TEST_COMMENT",
+    "ETD_TEST_EMPTY",
+    "ETD_TEST_SHELL",
+)
 
 
 def _clear(monkeypatch) -> None:

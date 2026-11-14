@@ -8,12 +8,17 @@ import os
 from dataclasses import dataclass
 
 from earth_trail_detective.application.ports import LiveDataGateway, SeriesSource
-from earth_trail_detective.application.sources import DerivedSeriesSource, LiveSeriesSource
+from earth_trail_detective.application.sources import (
+    DerivedSeriesSource,
+    LiveSeriesSource,
+    RoutingGateway,
+)
 from earth_trail_detective.application.trail import TrailBuilder
 from earth_trail_detective.application.trend_analysis import TrendAnalyzer
 from earth_trail_detective.config import TOKEN_VARIABLE, Settings, load_env_file
 from earth_trail_detective.domain.models import Period
 from earth_trail_detective.infrastructure.earthaccess_gateway import EarthaccessGateway
+from earth_trail_detective.infrastructure.harmony_gateway import HarmonyGateway
 from earth_trail_detective.infrastructure.parquet_repository import ParquetSeriesRepository
 from earth_trail_detective.infrastructure.yaml_catalog import YamlCatalog
 
@@ -58,5 +63,5 @@ def build_container(settings: Settings | None = None) -> Container:
         settings=settings,
         catalog=YamlCatalog(settings.catalog_dir),
         repository=ParquetSeriesRepository(settings.data_dir),
-        gateway=EarthaccessGateway(),
+        gateway=RoutingGateway([EarthaccessGateway(), HarmonyGateway()]),
     )

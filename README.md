@@ -61,7 +61,7 @@ immediately. The extras are optional add-ons:
 | Extra | Installs | Needed for |
 |-------|----------|------------|
 | `.[dev]` | pytest, ruff | running the tests and the code style check |
-| `.[live]` | earthaccess, xarray, h5netcdf | fetching data from NASA Earthdata |
+| `.[live]` | earthaccess, harmony-py, xarray, h5netcdf, h5py | fetching data from NASA Earthdata |
 
 Install both with `pip install -e ".[dev,live]"`.
 
@@ -119,30 +119,44 @@ All NASA data needs a free **Earthdata Login**.
    over `.env`, or `.streamlit/secrets.toml` (copy `.streamlit/secrets.toml.example`),
    which is used only if neither of the other two is set.
 
-### 4a. Scripted: MERRA-2, GLDAS, IMERG, OCO-2 GEOS
+### 4a. Scripted: MERRA-2, GLDAS, IMERG, OMI and OCO-2 GEOS
 
 ```bash
 pip install -e ".[live]"
-python scripts/build_cache.py --demo A1 --start 2000-01
+python scripts/build_cache.py                                           # everything
+python scripts/build_cache.py --demo A1 --start 2020-01 --end 2020-12   # a quick trial
 ```
 
-The script finds the monthly files, reads them over the network, averages each region
-with cos(latitude) weights and writes one Parquet file per variable and region to `data/`.
-Options: `--demo` (A1, A2, V; repeatable; default all), `--start` / `--end` (`YYYY-MM`).
-One file per month is read, so a long period takes a while – start with a short period.
+The script fetches every product of the chosen demos, averages each region with
+cos(latitude) weights and writes one Parquet file per variable and region to `data/`.
+Options: `--demo` (A1, A2, V; repeatable; default all), `--start` / `--end` (`YYYY-MM`;
+default: the full record of each product), `--refresh` (reload what is already cached).
 
-### 4b. By hand: OMI, MODIS, AIRS, CYGNSS
+Two NASA services are used, chosen per product in the catalog (`access.provider`):
 
-These products are not regular netCDF grids, so they are exported once by hand:
+- **Harmony** for MERRA-2, GLDAS, IMERG and the daily OMI products (SO₂, NO₂, aerosol
+  index): NASA's servers cut the region box out of every file, the script downloads the
+  small results and averages them. One job per region and year.
+- **earthaccess** for OCO-2 GEOS, which Harmony does not serve: one whole file per month
+  is read over the network (about a minute per file).
+
+A full run takes a few hours, mostly for the daily OMI files – **start with the quick
+trial** to see that your token and approvals work. Every product is saved as soon as it is
+complete and cached series are skipped, so an interrupted run can simply be started again.
+
+### 4b. By hand: MODIS, AIRS, CYGNSS (and OMI as a fallback)
+
+These products have no scripted access, so they are exported once by hand. The same way
+works for OMI if the Harmony route fails:
 
 1. Open [Giovanni](https://giovanni.gsfc.nasa.gov/giovanni/), choose the plot
    *Time Series, Area-Averaged*, the variable, the bounding box of the region
    (see [`catalog/regions.yaml`](catalog/regions.yaml)) and the period.
-2. Download the result as CSV.
+2. Download the result as CSV into `data/raw/` (ignored by git).
 3. Import it:
 
    ```bash
-   python scripts/import_csv.py --variable so2_column_omi --region ohio_valley download.csv
+   python scripts/import_csv.py --variable so2_column_omi --region ohio_valley data/raw/download.csv
    ```
 
 For MODIS snow albedo use an [AppEEARS](https://appeears.earthdatacloud.nasa.gov/) area

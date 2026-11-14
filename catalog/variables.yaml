@@ -17,7 +17,10 @@
 #   source_url   landing page of the product (cited on every card)
 #   caveats      warnings shown on the card (spec 15)
 #   access       how to get the data:
-#                  provider: earthaccess -> scripts/build_cache.py and live mode
+#                  provider: harmony     -> scripts/build_cache.py and live mode; NASA's
+#                                           servers cut out the region box (preferred)
+#                  provider: earthaccess -> same, but whole files are read over the
+#                                           network (only where Harmony has no service)
 #                  provider: csv         -> export by hand, then scripts/import_csv.py
 #   derivation   {operation: sum | ratio, inputs: [variable ids]} for computed values
 #
@@ -62,7 +65,7 @@ products:
     coverage: global, 0.5° x 0.625°
     source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXAER_5.12.4/summary
     caveats: [*caveat_merra2]
-    access: {provider: earthaccess, short_name: M2TMNXAER, version: "5.12.4"}
+    access: {provider: harmony, short_name: M2TMNXAER, version: "5.12.4"}
 
   merra2_adg: &merra2_adg
     product: MERRA-2 M2TMNXADG
@@ -72,7 +75,7 @@ products:
     coverage: global, 0.5° x 0.625°
     source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXADG_5.12.4/summary
     caveats: [*caveat_merra2]
-    access: {provider: earthaccess, short_name: M2TMNXADG, version: "5.12.4"}
+    access: {provider: harmony, short_name: M2TMNXADG, version: "5.12.4"}
 
   merra2_flx: &merra2_flx
     product: MERRA-2 M2TMNXFLX
@@ -82,7 +85,7 @@ products:
     coverage: global, 0.5° x 0.625°
     source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXFLX_5.12.4/summary
     caveats: []
-    access: {provider: earthaccess, short_name: M2TMNXFLX, version: "5.12.4"}
+    access: {provider: harmony, short_name: M2TMNXFLX, version: "5.12.4"}
 
   merra2_glc: &merra2_glc
     product: MERRA-2 M2TMNXGLC
@@ -92,7 +95,7 @@ products:
     coverage: global land ice, 0.5° x 0.625°
     source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXGLC_5.12.4/summary
     caveats: [*caveat_mountain]
-    access: {provider: earthaccess, short_name: M2TMNXGLC, version: "5.12.4"}
+    access: {provider: harmony, short_name: M2TMNXGLC, version: "5.12.4"}
 
   gldas: &gldas
     product: GLDAS GLDAS_NOAH025_M
@@ -102,16 +105,14 @@ products:
     coverage: global land, 0.25°
     source_url: https://disc.gsfc.nasa.gov/datasets/GLDAS_NOAH025_M_2.1/summary
     caveats: [*caveat_gldas]
-    access: {provider: earthaccess, short_name: GLDAS_NOAH025_M, version: "2.1"}
+    access: {provider: harmony, short_name: GLDAS_NOAH025_M, version: "2.1"}
 
-  omi_csv: &omi_csv
+  # Daily OMI grids; every entry adds its own "access" block (Harmony).
+  omi: &omi
     kind: measured
     period: {start: "2004-10", end: null}
     coverage: global, 0.25°
     caveats: [*caveat_omi]
-    access:
-      provider: csv
-      hint: "Giovanni > Time Series, Area-Averaged > download CSV (https://giovanni.gsfc.nasa.gov/giovanni/)"
 
   modis_cloud: &modis_cloud
     product: MODIS MOD08_M3
@@ -142,7 +143,12 @@ variables:
     substance: sulfur
     step: air
     source_url: https://disc.gsfc.nasa.gov/datasets/OMSO2e_003/summary
-    <<: *omi_csv
+    access:
+      provider: harmony
+      short_name: OMSO2e
+      version: "003"
+      group: HDFEOS/GRIDS/OMI_Total_Column_Amount_SO2/Data_Fields   # path of the grid inside the HDF-EOS file
+    <<: *omi
 
   - id: so4_column_merra2
     name: Sulfate particles in the air column
@@ -388,7 +394,12 @@ variables:
     step: air
     coverage: global, 1°   # coarser than the other OMI products
     source_url: https://disc.gsfc.nasa.gov/datasets/OMAERUVd_003/summary
-    <<: *omi_csv
+    access:
+      provider: harmony
+      short_name: OMAERUVd
+      version: "003"
+      group: HDFEOS/GRIDS/Aerosol_NearUV_Grid/Data_Fields   # path of the grid inside the HDF-EOS file
+    <<: *omi
 
   - id: dust_cloud_washout   # ADDED (matrix 10.2: dust x cloud = model washout)
     name: Dust washed out by storm clouds
@@ -478,7 +489,12 @@ variables:
     substance: nitrogen
     step: air
     source_url: https://disc.gsfc.nasa.gov/datasets/OMNO2d_003/summary
-    <<: *omi_csv
+    access:
+      provider: harmony
+      short_name: OMNO2d
+      version: "003"
+      group: HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields   # path of the grid inside the HDF-EOS file
+    <<: *omi
 
   # ===== MICROPLASTICS =============================================================
   - id: microplastics_ocean
@@ -637,7 +653,7 @@ variables:
     coverage: global, 0.1°
     source_url: https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGM_07/summary
     caveats: []
-    access: {provider: earthaccess, short_name: GPM_3IMERGM, version: "07", group: Grid}
+    access: {provider: harmony, short_name: GPM_3IMERGM, version: "07", group: Grid}
 
   - id: glacier_runoff_merra2
     name: Meltwater running off glaciers

@@ -3,14 +3,16 @@
 * ``DerivedSeriesSource`` is a decorator: it adds derived variables (sum,
   ratio) on top of any source – cache and live access behave the same.
 * ``LiveSeriesSource`` adapts a ``LiveDataGateway`` to the ``SeriesSource`` port.
+* ``RoutingGateway`` combines several gateways behind the one gateway port.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import numpy as np
 import pandas as pd
 
 from earth_trail_detective.application.ports import Catalog, LiveDataGateway, SeriesSource
+from earth_trail_detective.domain.errors import LiveAccessError
 from earth_trail_detective.domain.models import Period, Region, VariableSpec
 from earth_trail_detective.domain.series import MonthlySeries, SeriesMeta
 
@@ -78,3 +80,36 @@ class LiveSeriesSource:
             "Live access is not available for this product. "
             "Export a CSV and import it into the cache instead (see README)."
         )
+
+
+class RoutingGateway:
+    """Sends every variable to the first gateway that supports it.
+
+    Callers see one ``LiveDataGateway``; which NASA service delivers a
+    product stays a detail of the catalog (``access.provider``).
+    """
+
+    def __init__(self, gateways: Sequence[LiveDataGateway]) -> None:
+        self._gateways = tuple(gateways)
+
+    def _gateway_for(self, variable: VariableSpec) -> LiveDataGateway | None:
+        return next((g for g in self._gateways if g.supports(variable)), None)
+
+    def supports(self, variable: VariableSpec) -> bool:
+        return self._gateway_for(variable) is not None
+
+    def fetch(
+        self, variables: Sequence[VariableSpec], regions: Sequence[Region], period: Period
+    ) -> list[MonthlySeries]:
+        unsupported = [variable.id for variable in variables if not self.supports(variable)]
+        if unsupported:
+            raise LiveAccessError(f"No scripted access for: {unsupported}")
+        # One call per gateway, so each gateway can share files between its variables.
+        fetched: dict[tuple[str, str], MonthlySeries] = {}
+        for gateway in self._gateways:
+            own = [variable for variable in variables if self._gateway_for(variable) is gateway]
+            if not own:
+                continue
+            keys = [(variable.id, region.id) for variable in own for region in regions]
+            fetched.update(zip(keys, gateway.fetch(own, regions, period), strict=True))
+        return [fetched[(variable.id, region.id)] for variable in variables for region in regions]

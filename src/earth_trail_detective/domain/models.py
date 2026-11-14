@@ -97,7 +97,7 @@ class StepInfo:
 class AccessSpec:
     """How the raw data of a variable can be obtained."""
 
-    provider: str  # "earthaccess" (scripted / live) or "csv" (manual export + import)
+    provider: str  # "harmony" or "earthaccess" (scripted / live), "csv" (manual export)
     short_name: str | None = None  # NASA CMR collection short name
     version: str | None = None  # NASA CMR collection version
     group: str | None = None  # HDF5/netCDF group that holds the grid, if any
