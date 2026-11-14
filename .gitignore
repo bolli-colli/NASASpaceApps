@@ -23,3 +23,6 @@ data-connection-repos/
 
 # macOS folder metadata
 .DS_Store
+
+# Container build output (image archives)
+dist/

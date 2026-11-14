@@ -1,0 +1,22 @@
+# Keep the build context small and free of secrets (buildah and docker both read this)
+.git
+.github
+.idea
+.venv
+.env
+.streamlit/secrets.toml
+**/__pycache__
+**/.pytest_cache
+.ruff_cache
+*.egg-info
+.DS_Store
+dist/
+research/
+wiki/
+specs/
+docs/
+tests/
+scripts/
+data-connection-repos/
+data/raw/
+data/synthetic/

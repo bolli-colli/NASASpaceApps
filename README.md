@@ -199,10 +199,36 @@ ruff check .        # code style and common mistakes
 ruff format .       # automatic formatting
 ```
 
+### 6a. Pipeline and container image (mise + buildah)
+
+All steps are [mise](https://mise.jdx.dev/) tasks – the same locally and in GitHub Actions
+(`.github/workflows/container.yml`):
+
+```bash
+mise run ci           # lint -> tests -> image build -> smoke test (stops at the first failure)
+mise run image:run    # start the built image on http://localhost:8080
+```
+
+| Task | What it does |
+|---|---|
+| `setup` | `.venv` with Python 3.13 and the `dev` + `live` extras |
+| `lint`, `test` | test stage; the image is only built if it passes |
+| `image:build` | `Containerfile` built with **buildah** – natively on Linux/CI, on macOS inside `quay.io/buildah/stable` via Docker or Podman |
+| `image:smoke` | starts the image and checks: healthy, nginx serves the page and `/healthz`, security headers, websocket upgrade, no token, non-root, a real Demo A1 analysis and a headless app run inside the container, no traceback, clean stop |
+| `image:push` | pushes with buildah (CI → `ghcr.io/<owner>/nasaspaceapps`, tags: commit, branch, `latest` on `main`) |
+
+The image: **nginx** on port 8080 in front of Streamlit (internal, 127.0.0.1:8501), `tini`
+as PID 1, non-root user, catalog and the Parquet cache from `data/` baked in,
+`ETD_FETCH=off`. Build with `EXTRAS=live` for live access; the token is only passed at run
+time (`-e EARTHDATA_TOKEN=…`), never baked in. Commit `data/*.parquet` before building – the
+smoke test fails on an empty cache on purpose.
+
 ## 7. Project layout
 
 ```
 app.py                      start script for Streamlit
+Containerfile, mise.toml    container image and pipeline tasks (section 6a)
+container/                  nginx config, entrypoint, build/push/smoke-test scripts
 catalog/                    variables, substances, regions, trail gaps, demos (YAML)
 data/                       offline cache (Parquet), one file per variable and region
 docs/DOCUMENTATION.md       libraries, concepts, data access, developer setup

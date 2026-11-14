@@ -1,0 +1,55 @@
+# Developer tasks and the CI pipeline – the same commands locally and in GitHub Actions.
+#
+#   mise run ci            lint -> tests -> image build (buildah) -> smoke test
+#   mise run image:run     start the built image on http://localhost:8080
+#
+# Image variables: IMAGE_NAME, IMAGE_TAG (default: short git commit), EXTRAS ("" or "live").
+
+[tools]
+python = "3.13"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+IMAGE_NAME = "{{ get_env(name='IMAGE_NAME', default='localhost/earth-trail-detective') }}"
+
+[tasks.setup]
+description = "Install the app with test and NASA-access extras into .venv"
+run = 'pip install --quiet -e ".[dev,live]"'
+
+[tasks.lint]
+description = "Code style (ruff)"
+run = ["ruff check src tests scripts container", "ruff format --check src tests scripts container"]
+
+[tasks.test]
+description = "Unit and app tests (never contact NASA)"
+env = { ETD_FETCH = "off" }
+run = "pytest -q"
+
+[tasks."image:build"]
+description = "Build the container image with buildah (natively on Linux, else in a container)"
+run = "container/build-image.sh"
+
+[tasks."image:smoke"]
+description = "Smoke-test the built image: health, nginx, websocket, real analysis, shutdown"
+run = "container/smoke-test.sh"
+
+[tasks."image:run"]
+description = "Run the built image locally on http://localhost:8080 (offline cache)"
+run = '''
+engine="$(command -v podman || command -v docker)"
+tag="${IMAGE_TAG:-$(git rev-parse --short HEAD)}${EXTRAS:+-$EXTRAS}"
+"$engine" run --rm -p 8080:8080 "$IMAGE_NAME:$tag"
+'''
+
+[tasks."image:push"]
+description = "Push the image with buildah (CI; needs REGISTRY_USER / REGISTRY_PASSWORD)"
+run = "container/push-image.sh"
+
+[tasks.ci]
+description = "Full pipeline: test stage first, the image is only built if it passes"
+run = [
+  "mise run lint",
+  "mise run test",
+  "mise run image:build",
+  "mise run image:smoke",
+]

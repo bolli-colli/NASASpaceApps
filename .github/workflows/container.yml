@@ -1,0 +1,56 @@
+# Pipeline: test stage -> image build (buildah) -> smoke test -> push to GHCR.
+# Every step is a mise task, so `mise run ci` reproduces it locally.
+name: container
+
+on:
+  push:
+    branches: [main, "dev*"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test stage (lint + tests)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+      - run: mise run setup
+      - run: mise run lint
+      - run: mise run test
+
+  image:
+    name: Build, smoke-test and push the image
+    needs: test # the image is only built when the test stage passes
+    runs-on: ubuntu-24.04 # buildah and podman are preinstalled
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/nasaspaceapps
+      IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v5
+      - name: Lowercase image name (registry requirement)
+        run: echo "IMAGE_NAME=${IMAGE_NAME,,}" >> "$GITHUB_ENV"
+      - run: mise run image:build
+      - run: mise run image:smoke
+      - name: Push to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          # branch or tag name as extra tag; "latest" only for main
+          EXTRA_TAGS: >-
+            ${{ github.ref_name }}
+            ${{ github.ref == 'refs/heads/main' && 'latest' || '' }}
+        run: mise run image:push
