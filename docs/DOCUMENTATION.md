@@ -67,7 +67,8 @@ infrastructure/
   csv_import.py       Giovanni / plain CSV reader
   grid_reduction.py   one gridded file -> area mean of a box
   gridded_gateway.py  shared skeleton of the NASA gateways (template method)
-  harmony_gateway.py  MERRA-2, GLDAS, IMERG, OMI via NASA Harmony (server-side subsetting)
+  giovanni_gateway.py daily OMI via Giovanni in Harmony (server-side area averages)
+  harmony_gateway.py  MERRA-2, GLDAS, IMERG via NASA Harmony (server-side subsetting)
   earthaccess_gateway.py  products without a Harmony service (OCO-2 GEOS): whole files
   hoss_reader.py      reads the subset files Harmony returns
 presentation/
@@ -282,11 +283,12 @@ A catalog entry can be computed from others (`derivation: {operation, inputs}`):
 ### 4.1 Overview
 
 ```
-                     ┌─ scripts/build_cache.py ─┬─ HarmonyGateway (region subsets) ────┐
+                     ┌─ scripts/build_cache.py ─┬─ GiovanniGateway (area means) ───────┐
+                     │                          ├─ HarmonyGateway (region subsets) ────┤
 NASA Earthdata ──────┤                          └─ EarthaccessGateway (whole files) ───┼──► data/*.parquet ──► app
  (token needed)      └─ Giovanni / AppEEARS CSV ── scripts/import_csv.py ───────────────┘      (offline)
 
-Researcher mode, "Live": the same two gateways ──► app   (no file is written)
+Researcher mode, "Live": the same three gateways ──► app   (no file is written)
 ```
 
 During a presentation nothing is fetched: demos read `data/` only.
@@ -307,16 +309,46 @@ and never committed (`.gitignore` covers `.streamlit/secrets.toml` and `.env`).
 
 ### 4.3 Scripted access
 
-Two gateways fetch data; the catalog says per product which one (`access.provider`).
+Three gateways fetch data; the catalog says per product which one (`access.provider`).
 
 | Provider | Products | How |
 |----------|----------|-----|
-| `harmony` | MERRA-2, GLDAS, GPM IMERG, OMI (`OMSO2e`, `OMNO2d`, `OMAERUVd`) | NASA's servers cut the region box and the wanted variables out of every file; only the small results are downloaded. |
+| `giovanni` | OMI (`OMSO2e`, `OMNO2d`, `OMAERUVd`) | Giovanni's area-averaging service, run by Harmony: NASA's servers compute the area mean, one small CSV per variable and region. |
+| `harmony` | MERRA-2, GLDAS, GPM IMERG | NASA's servers cut the region box and the wanted variables out of every file; only the small results are downloaded. |
 | `earthaccess` | OCO-2 GEOS (`OCO2_GEOS_L3CO2_MONTH`) | Harmony offers no service for it, so whole files are read over the network. |
 
 Harmony is preferred wherever it is offered. Measured on 2026-11-14 for eight monthly
 MERRA-2 files and three variables: 28 s through Harmony, 396 s by reading whole files –
 with identical area means, because the same averaging code runs on the subset.
+
+#### Giovanni area averages (daily OMI)
+
+Subsetting every daily OMI file would mean about 7,700 result files per product and
+region (measured: 176 s for 91 days, i.e. hours for the full record). Harmony also runs
+**Giovanni's "Area-Averaged Time Series"** as a service, which does the averaging on the
+server and returns one CSV – measured on 2026-11-14: 20 years of daily aerosol index in
+21 s, with monthly means identical to the subsetting route.
+
+```
+GET https://harmony.earthdata.nasa.gov/{collection id}/ogc-api-coverages/1.0.0/collections/parameter_vars/coverage/rangeset
+    ?variable=OMSO2e_003_ColumnAmountSO2
+    &subset=lat(37:42)&subset=lon(-88:-80)&subset=time("2005-01-01T00:00:00Z":"2024-12-31T23:59:59Z")
+    &average=area&format=text/csv&forceAsync=true
+Authorization: Bearer $EARTHDATA_TOKEN
+→ 303 to /jobs/{id} → poll until "successful" → download the CSV link
+```
+
+- The variable is the **Giovanni ID** `<ShortName>_<Version>_<Variable>`, stored as
+  `access.giovanni_id` in the catalog. Accepted IDs:
+  <https://api.giovanni.earthdata.nasa.gov/configured-variables/> (with token).
+  MODIS MOD08_M3, AIRS CO, CYGNSS and the monthly MERRA-2 `M2TMNX…` collections are
+  **not** on that list.
+- The collection version must match the ID (OMI `003`; the newer `004` is rejected).
+- Giovanni has a monthly compute quota per user
+  (`https://api.giovanni.earthdata.nasa.gov/quota`); the gateway stops at 95 %.
+- The CSV has the same layout as a Giovanni website download, so `csv_import.py` reads
+  it; `build_series` averages the daily values to months.
+- Fallback: switch the catalog entry to `provider: harmony` (the `group` path is kept).
 
 #### Harmony (server-side subsetting)
 
@@ -407,7 +439,7 @@ script exits with status 1.
 ### 4.4 Manual export + import
 
 **MODIS, AIRS and CYGNSS** have no scripted access here. For them – and for OMI, should
-Harmony fail – NASA's own tools do the area averaging:
+the scripted Giovanni route fail – NASA's own tools do the area averaging:
 
 - **Giovanni** (<https://giovanni.gsfc.nasa.gov/giovanni/>): plot type
   *Time Series, Area-Averaged* → choose variable, box, period → download CSV.
@@ -425,7 +457,8 @@ date column, turns fill values into gaps and averages daily values to months.
 Options: `--date-column`, `--value-column`, `--fill-value`, `--unit`, `--source-url`.
 
 > The Giovanni **time-series API** (`api.giovanni.earthdata.nasa.gov/timeseries`) returns
-> series for a single point only, not area averages, so it is not used.
+> series for a single point only, not area averages, so it is not used; area averages
+> come from the averaging service above.
 
 ### 4.5 The cache
 
@@ -582,8 +615,8 @@ the 3-minute user test and the offline test with Wi-Fi switched off.
 | Topic | Status |
 |-------|--------|
 | Demo data | The repository ships **no** NASA data; `data/` must be filled once with a token (section 4). |
-| Live access | Implemented with NASA Harmony (MERRA-2, GLDAS, IMERG, OMI SO₂, NO₂, aerosol index) and earthaccess (OCO-2 GEOS). Not via the Giovanni time-series API (single points only). Smoke-tested against the NASA servers on 2026-11-14 for one region (Ohio Valley) and a few months of 2020: all six product families return values, and for MERRA-2, GLDAS and IMERG the Harmony route gives the same area means as reading whole files. A cache build over the full record has **not yet completed**. |
-| Giovanni data ID in the researcher form | Not implemented, for the same reason (point series only; ID format unverified). |
+| Live access | Implemented with Giovanni area averages via Harmony (OMI SO₂, NO₂, aerosol index), NASA Harmony subsetting (MERRA-2, GLDAS, IMERG) and earthaccess (OCO-2 GEOS). Tested against the NASA servers on 2026-11-14: for the OMI aerosol index (Ohio Valley, Jan–Mar 2020) the Giovanni route and the Harmony subsetting route give identical monthly means; for MERRA-2, GLDAS and IMERG the Harmony route gives the same area means as reading whole files. Live results are not yet saved to the cache. |
+| Giovanni data ID in the researcher form | Not implemented: the form offers catalog variables only. Giovanni IDs live in the catalog (`access.giovanni_id`). |
 | Custom bounding boxes | Only with live access; the cache holds area means of fixed regions. |
 | PNG export | Via the Plotly toolbar of each chart, not a separate button. |
 | Hamed-Rao | With the conservative safeguard described in 3.7. |

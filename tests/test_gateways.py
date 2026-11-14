@@ -11,6 +11,7 @@ from earth_trail_detective.application.sources import RoutingGateway
 from earth_trail_detective.domain.errors import LiveAccessError
 from earth_trail_detective.domain.models import Period
 from earth_trail_detective.infrastructure.earthaccess_gateway import EarthaccessGateway
+from earth_trail_detective.infrastructure.giovanni_gateway import GiovanniGateway
 from earth_trail_detective.infrastructure.gridded_gateway import AreaMeanCollector
 from earth_trail_detective.infrastructure.harmony_gateway import HarmonyGateway, yearly_chunks
 from earth_trail_detective.infrastructure.hoss_reader import load_grid
@@ -32,11 +33,15 @@ class FakeGateway:
 
 
 def test_catalog_products_are_assigned_to_the_right_gateway(catalog):
-    harmony, earthaccess = HarmonyGateway(), EarthaccessGateway()
+    harmony, earthaccess, giovanni = HarmonyGateway(), EarthaccessGateway(), GiovanniGateway()
+    # Daily OMI grids: area means computed by Giovanni; Harmony path kept as fallback.
     for variable_id in ("so2_column_omi", "aerosol_index_omi", "no2_column_omi"):
         variable = catalog.variable(variable_id)
-        assert harmony.supports(variable) and not earthaccess.supports(variable)
-        assert variable.access.group.startswith("HDFEOS/GRIDS/")
+        assert giovanni.supports(variable)
+        assert not harmony.supports(variable) and not earthaccess.supports(variable)
+        access, name = variable.access, variable.source_variables[0]
+        assert access.giovanni_id == f"{access.short_name}_{access.version}_{name}"
+        assert access.group.startswith("HDFEOS/GRIDS/")
     # The monthly model products are subset by Harmony as well.
     for variable_id in ("so4_column_merra2", "snow_water_gldas", "precipitation_imerg"):
         assert harmony.supports(catalog.variable(variable_id))
@@ -45,7 +50,7 @@ def test_catalog_products_are_assigned_to_the_right_gateway(catalog):
 
 
 def test_routing_gateway_splits_by_provider_and_keeps_the_order(catalog):
-    first, second = FakeGateway("earthaccess"), FakeGateway("harmony")
+    first, second = FakeGateway("earthaccess"), FakeGateway("giovanni")
     router = RoutingGateway([first, second])
     variables = [catalog.variable(i) for i in ("so2_column_omi", "co2_column", "no2_column_omi")]
     regions = [catalog.region("alps"), catalog.region("sahara")]

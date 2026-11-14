@@ -17,8 +17,12 @@
 #   source_url   landing page of the product (cited on every card)
 #   caveats      warnings shown on the card (spec 15)
 #   access       how to get the data:
-#                  provider: harmony     -> scripts/build_cache.py and live mode; NASA's
-#                                           servers cut out the region box (preferred)
+#                  provider: giovanni    -> scripts/build_cache.py and live mode; NASA's
+#                                           servers compute the area mean (fastest, needs
+#                                           giovanni_id; list of accepted ids:
+#                                           https://api.giovanni.earthdata.nasa.gov/configured-variables/)
+#                  provider: harmony     -> same; NASA's servers cut out the region box,
+#                                           the app averages the small files
 #                  provider: earthaccess -> same, but whole files are read over the
 #                                           network (only where Harmony has no service)
 #                  provider: csv         -> export by hand, then scripts/import_csv.py
@@ -107,7 +111,9 @@ products:
     caveats: [*caveat_gldas]
     access: {provider: harmony, short_name: GLDAS_NOAH025_M, version: "2.1"}
 
-  # Daily OMI grids; every entry adds its own "access" block (Harmony).
+  # Daily OMI grids; every entry adds its own "access" block. Giovanni computes the
+  # area means on NASA's servers - subsetting every daily file would take hours.
+  # Fallback: provider harmony with the "group" path below.
   omi: &omi
     kind: measured
     period: {start: "2004-10", end: null}
@@ -144,9 +150,10 @@ variables:
     step: air
     source_url: https://disc.gsfc.nasa.gov/datasets/OMSO2e_003/summary
     access:
-      provider: harmony
+      provider: giovanni
       short_name: OMSO2e
       version: "003"
+      giovanni_id: OMSO2e_003_ColumnAmountSO2
       group: HDFEOS/GRIDS/OMI_Total_Column_Amount_SO2/Data_Fields   # path of the grid inside the HDF-EOS file
     <<: *omi
 
@@ -395,9 +402,10 @@ variables:
     coverage: global, 1°   # coarser than the other OMI products
     source_url: https://disc.gsfc.nasa.gov/datasets/OMAERUVd_003/summary
     access:
-      provider: harmony
+      provider: giovanni
       short_name: OMAERUVd
       version: "003"
+      giovanni_id: OMAERUVd_003_UVAerosolIndex
       group: HDFEOS/GRIDS/Aerosol_NearUV_Grid/Data_Fields   # path of the grid inside the HDF-EOS file
     <<: *omi
 
@@ -490,9 +498,10 @@ variables:
     step: air
     source_url: https://disc.gsfc.nasa.gov/datasets/OMNO2d_003/summary
     access:
-      provider: harmony
+      provider: giovanni
       short_name: OMNO2d
       version: "003"
+      giovanni_id: OMNO2d_003_ColumnAmountNO2TropCloudScreened
       group: HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields   # path of the grid inside the HDF-EOS file
     <<: *omi
 

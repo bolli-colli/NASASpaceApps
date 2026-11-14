@@ -58,7 +58,9 @@ def read_time_series_csv(
 
     table = pd.read_csv(io.StringIO("\n".join(lines[header_row:])))
     table.columns = [str(column).strip() for column in table.columns]
-    dates = pd.to_datetime(table.iloc[:, 0])
+    # Long Giovanni series mix "2004-10-06 00:00:00" and "2020-01-01T00:00:00" in one
+    # column, so the format must be inferred row by row.
+    dates = pd.to_datetime(table.iloc[:, 0], format="mixed")
     if value_column is None:
         value_column = table.columns[1]
     if value_column not in table.columns:

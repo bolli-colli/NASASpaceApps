@@ -74,7 +74,10 @@ def render_researcher_form(catalog: Catalog, has_token: bool) -> AnalysisRequest
             [SOURCE_CACHE, SOURCE_LIVE],
             disabled=not has_token,
             help="Live access needs EARTHDATA_TOKEN in the environment or in .env (see README). "
-            "It reads one file per month and can take minutes - choose a short period.",
+            "Daily OMI products are averaged on NASA's servers (under a minute). Monthly "
+            "MERRA-2, GLDAS and IMERG products are read one file per month (a few minutes "
+            "for 20 years); OCO-2 CO2 reads whole files and is the slowest. MODIS, AIRS CO "
+            "and CYGNSS come from the cache only.",
         )
         left, right = st.columns(2)
         with left:

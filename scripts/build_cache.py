@@ -58,6 +58,13 @@ def main() -> None:
     parser.add_argument("--start", type=_month, help="first month, YYYY-MM (default: full record)")
     parser.add_argument("--end", type=_month, help="last month, YYYY-MM (default: today)")
     parser.add_argument("--refresh", action="store_true", help="reload series already cached")
+    parser.add_argument(
+        "--skip-product",
+        action="append",
+        default=[],
+        metavar="SHORT_NAME",
+        help="leave out a NASA product, e.g. OMSO2e (repeatable)",
+    )
     arguments = parser.parse_args()
 
     container = build_container()
@@ -80,6 +87,8 @@ def main() -> None:
         # One product at a time, saved at once: a failure after hours loses one product.
         by_product: dict[AccessSpec, list[VariableSpec]] = defaultdict(list)
         for variable in scripted:
+            if variable.access.short_name in arguments.skip_product:
+                continue
             by_product[variable.access].append(variable)
         for access, members in by_product.items():
             if not arguments.refresh:

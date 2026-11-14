@@ -130,24 +130,27 @@ python scripts/build_cache.py --demo A1 --start 2020-01 --end 2020-12   # a quic
 The script fetches every product of the chosen demos, averages each region with
 cos(latitude) weights and writes one Parquet file per variable and region to `data/`.
 Options: `--demo` (A1, A2, V; repeatable; default all), `--start` / `--end` (`YYYY-MM`;
-default: the full record of each product), `--refresh` (reload what is already cached).
+default: the full record of each product), `--refresh` (reload what is already cached),
+`--skip-product OMSO2e` (leave out a product; repeatable).
 
-Two NASA services are used, chosen per product in the catalog (`access.provider`):
+Three NASA routes are used, chosen per product in the catalog (`access.provider`):
 
-- **Harmony** for MERRA-2, GLDAS, IMERG and the daily OMI products (SO₂, NO₂, aerosol
-  index): NASA's servers cut the region box out of every file, the script downloads the
-  small results and averages them. One job per region and year.
+- **Giovanni** (via Harmony) for the daily OMI products (SO₂, NO₂, aerosol index):
+  NASA's servers compute the area mean and return one small CSV per region – about
+  20 seconds for 20 years of daily data.
+- **Harmony** for MERRA-2, GLDAS and IMERG: NASA's servers cut the region box out of
+  every monthly file, the script downloads the small results and averages them.
+  One job per region and year.
 - **earthaccess** for OCO-2 GEOS, which Harmony does not serve: one whole file per month
   is read over the network (about a minute per file).
 
-A full run takes a few hours, mostly for the daily OMI files – **start with the quick
-trial** to see that your token and approvals work. Every product is saved as soon as it is
+**Start with the quick trial** to see that your token and approvals work. Every product is saved as soon as it is
 complete and cached series are skipped, so an interrupted run can simply be started again.
 
 ### 4b. By hand: MODIS, AIRS, CYGNSS (and OMI as a fallback)
 
 These products have no scripted access, so they are exported once by hand. The same way
-works for OMI if the Harmony route fails:
+works for OMI if the scripted Giovanni route fails:
 
 1. Open [Giovanni](https://giovanni.gsfc.nasa.gov/giovanni/), choose the plot
    *Time Series, Area-Averaged*, the variable, the bounding box of the region

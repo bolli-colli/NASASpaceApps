@@ -20,3 +20,6 @@ data/synthetic/
 data/raw/
 .idea
 data-connection-repos/
+
+# macOS folder metadata
+.DS_Store

@@ -97,11 +97,12 @@ class StepInfo:
 class AccessSpec:
     """How the raw data of a variable can be obtained."""
 
-    provider: str  # "harmony" or "earthaccess" (scripted / live), "csv" (manual export)
+    provider: str  # "giovanni", "harmony", "earthaccess" (scripted / live), "csv" (manual)
     short_name: str | None = None  # NASA CMR collection short name
     version: str | None = None  # NASA CMR collection version
     group: str | None = None  # HDF5/netCDF group that holds the grid, if any
     hint: str | None = None  # where to export a CSV by hand
+    giovanni_id: str | None = None  # Giovanni variable id, e.g. "OMSO2e_003_ColumnAmountSO2"
 
 
 @dataclass(frozen=True)
