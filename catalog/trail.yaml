@@ -1,0 +1,168 @@
+# The trail model (spec 10.1) and the matrix cells without a trend card (spec 10.2).
+#
+# steps: display texts of the six steps (ids are fixed by the code, texts are free).
+# gaps:  one entry for every substance x step cell that has NO variable in
+#        variables.yaml. The app refuses to start if a cell has neither a
+#        variable nor a gap entry - so no cell can silently disappear.
+#   status: no_record        -> card "Trail ends here"
+#           optional_ground  -> card "Only ground data could continue the trail"
+#           not_applicable   -> step is skipped ("–" in the matrix); needs no reference
+#           pending          -> in the spec matrix, but no variable is fixed yet
+
+steps:
+  - id: air
+    label: Air
+    icon: "🌬️"
+    description: What is in the air - as a total column, at the surface, or on the move.
+  - id: cloud
+    label: Cloud
+    icon: "☁️"
+    description: What clouds take up, transform and wash out.
+  - id: precipitation
+    label: Rain & snow
+    icon: "🌧️"
+    description: What falls to the ground with rain and snow (wet) or settles by itself (dry).
+  - id: glacier
+    label: Glacier
+    icon: "🏔️"
+    description: What lands on snow and ice, darkens it and speeds up melting.
+  - id: soil
+    label: Soil
+    icon: "🌱"
+    description: What seeps into the ground.
+  - id: river
+    label: River & sea
+    icon: "🌊"
+    description: What runs off into rivers, lakes and the ocean.
+
+# Reusable texts (YAML anchors) to avoid repeating the same reason.
+texts:
+  no_soil: &no_soil
+    status: no_record
+    reason: >-
+      No satellite or NASA model tracks this substance inside the soil. Only the water that
+      carries it can be followed here (soil moisture and seepage, see "Water").
+    reference_label: NASA GLDAS land surface model
+    reference_url: https://ldas.gsfc.nasa.gov/gldas
+  no_river_particles: &no_river_particles
+    status: no_record
+    reason: >-
+      There is no global time series of this substance in rivers, lakes or the sea.
+      Particles in water cannot be told apart from space.
+    reference_label: MERRA-2 aerosol reanalysis (Randles et al. 2017)
+    reference_url: https://doi.org/10.1175/JCLI-D-16-0609.1
+  only_ocean_surface: &only_ocean_surface
+    status: no_record
+    reason: >-
+      Microplastics cannot be seen from space in air, clouds, rain, ice or soil. The only
+      estimate comes from the roughness of the ocean surface (CYGNSS).
+    reference_label: Evans & Ruf (2021), microplastics from spaceborne radar
+    reference_url: https://doi.org/10.1109/TGRS.2021.3081691
+  not_applicable: &not_applicable
+    status: not_applicable
+    reason: This step is not part of the trail of this substance.
+
+gaps:
+  # --- Sulfur --------------------------------------------------------------------
+  - {substance: sulfur, step: soil, <<: *no_soil}
+  - substance: sulfur
+    step: river
+    status: optional_ground
+    reason: >-
+      NASA has no time series of sulfate in rivers. Open ground measurements
+      (Water Quality Portal, ECCC) could continue the trail; this optional comparison
+      is switched off.
+    reference_label: Water Quality Portal
+    reference_url: https://www.waterqualitydata.us/
+
+  # --- Soot ----------------------------------------------------------------------
+  - {substance: soot, step: soil, <<: *no_soil}
+  - {substance: soot, step: river, <<: *no_river_particles}
+
+  # --- Nitrogen ------------------------------------------------------------------
+  - substance: nitrogen
+    step: cloud
+    status: no_record
+    reason: >-
+      Nitrogen chemistry inside cloud droplets is not available as a time series;
+      the satellite only sees nitrogen dioxide in cloud-free air.
+    reference_label: OMI NO2 product (OMNO2d)
+    reference_url: https://disc.gsfc.nasa.gov/datasets/OMNO2d_003/summary
+  - substance: nitrogen
+    step: precipitation
+    status: optional_ground
+    reason: >-
+      NASA has no time series of nitrate in rain. Open ground networks (NADP, CAPMoN)
+      measure it; this optional comparison is switched off.
+    reference_label: National Atmospheric Deposition Program (NADP)
+    reference_url: https://nadp.slh.wisc.edu/
+  - substance: nitrogen
+    step: glacier
+    status: no_record
+    reason: There is no time series of nitrogen compounds on snow and ice.
+    reference_label: OMI NO2 product (OMNO2d)
+    reference_url: https://disc.gsfc.nasa.gov/datasets/OMNO2d_003/summary
+  - {substance: nitrogen, step: soil, <<: *no_soil}
+  - substance: nitrogen
+    step: river
+    status: optional_ground
+    reason: >-
+      NASA has no time series of nitrate in rivers. Open ground measurements
+      (Water Quality Portal, ECCC) could continue the trail; this optional comparison
+      is switched off.
+    reference_label: Water Quality Portal
+    reference_url: https://www.waterqualitydata.us/
+
+  # --- Dust ----------------------------------------------------------------------
+  - {substance: dust, step: soil, <<: *no_soil}
+  - {substance: dust, step: river, <<: *no_river_particles}
+
+  # --- Smoke / organic carbon ------------------------------------------------------
+  - {substance: smoke, step: soil, <<: *no_soil}
+  - {substance: smoke, step: river, <<: *no_river_particles}
+
+  # --- Microplastics -------------------------------------------------------------
+  - {substance: microplastics, step: air, <<: *only_ocean_surface}
+  - {substance: microplastics, step: cloud, <<: *only_ocean_surface}
+  - {substance: microplastics, step: precipitation, <<: *only_ocean_surface}
+  - {substance: microplastics, step: glacier, <<: *only_ocean_surface}
+  - {substance: microplastics, step: soil, <<: *only_ocean_surface}
+
+  # --- Natural sources ("–" in the matrix) ----------------------------------------
+  - {substance: natural, step: glacier, <<: *not_applicable}
+  - {substance: natural, step: soil, <<: *not_applicable}
+  - {substance: natural, step: river, <<: *not_applicable}
+
+  # --- CO (transport marker, "–" in the matrix) -----------------------------------
+  - {substance: co, step: cloud, <<: *not_applicable}
+  - {substance: co, step: precipitation, <<: *not_applicable}
+  - {substance: co, step: glacier, <<: *not_applicable}
+  - {substance: co, step: soil, <<: *not_applicable}
+  - {substance: co, step: river, <<: *not_applicable}
+
+  # --- CO2 (validation only) ------------------------------------------------------
+  - {substance: co2, step: cloud, <<: *not_applicable}
+  - {substance: co2, step: precipitation, <<: *not_applicable}
+  - {substance: co2, step: glacier, <<: *not_applicable}
+  - {substance: co2, step: soil, <<: *not_applicable}
+  - {substance: co2, step: river, <<: *not_applicable}
+
+  # --- Water (carrier) -------------------------------------------------------------
+  # The spec matrix lists AIRS/MERRA-2 water vapour and MODIS/MERRA-2 cloud water,
+  # but table 10.3 fixes no product/variable for them yet.
+  - substance: water
+    step: air
+    status: pending
+    reason: >-
+      Water vapour (AIRS / MERRA-2) is planned for this step, but no variable has been
+      fixed in the catalog yet.
+    reference_label: NASA GES DISC
+    reference_url: https://disc.gsfc.nasa.gov/
+  - substance: water
+    step: cloud
+    status: pending
+    reason: >-
+      Cloud water (MODIS / MERRA-2) is planned for this step, but no variable has been
+      fixed in the catalog yet.
+    reference_label: NASA GES DISC
+    reference_url: https://disc.gsfc.nasa.gov/

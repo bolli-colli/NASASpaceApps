@@ -1,0 +1,56 @@
+# Substances that can be followed along the trail (spec 7 and 10.2).
+# Texts are shown in the app and can be edited without programming.
+#   student_visible: false  -> not offered in the student form (carrier / validation)
+
+substances:
+  - id: sulfur
+    name: Sulfur
+    icon: "🏭"
+    description: Comes from burning coal and oil; forms sulfate particles and acid rain.
+
+  - id: soot
+    name: Soot
+    icon: "🔥"
+    description: Tiny black carbon particles from engines and fires; they darken snow and ice.
+
+  - id: nitrogen
+    name: Nitrogen
+    icon: "🚗"
+    description: Nitrogen dioxide from traffic and power plants; a main ingredient of smog.
+
+  - id: dust
+    name: Dust
+    icon: "🏜️"
+    description: Mineral dust from deserts; it helps ice form in clouds and darkens snow.
+
+  - id: smoke
+    name: Smoke
+    icon: "🌲"
+    description: Organic carbon particles from wildfires and burning fields.
+
+  - id: microplastics
+    name: Microplastics
+    icon: "🧴"
+    description: Tiny plastic pieces; from space they can only be estimated on the ocean surface.
+
+  - id: natural
+    name: Natural sources
+    icon: "🌋"
+    description: Sulfur and salt that nature emits itself - ocean plankton, sea spray and volcanoes.
+
+  - id: co
+    name: CO
+    icon: "💨"
+    description: Carbon monoxide from fires and engines; it shows where the wind carries pollution.
+
+  - id: water
+    name: Water (the carrier)
+    icon: "💧"
+    description: The water that carries everything along the trail - rain, snow, soil water, runoff.
+    student_visible: false
+
+  - id: co2
+    name: CO₂ (validation)
+    icon: "✅"
+    description: Carbon dioxide rises steadily - a known trend used to check that the tool works.
+    student_visible: false

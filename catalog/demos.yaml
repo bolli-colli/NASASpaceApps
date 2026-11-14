@@ -1,0 +1,62 @@
+# Prepared demo cases (spec 11). A demo is only a preset:
+# substances + regions + explanatory text. Statistics and UI are the same for all.
+#
+# region_sets: each entry is one region or a pair of regions (ids from regions.yaml).
+
+demos:
+  - id: A1
+    title: "Follow the trail: same process, opposite trends"
+    purpose: Main demo - the same pollutant, two regions, possibly opposite trends.
+    explanation: >-
+      Clean-air laws have cut sulfur emissions in eastern North America since about 1990,
+      while studies report rising sulfur dioxide over India for much of the satellite era.
+      These are expectations from the literature, not results: look at each step and let
+      the data decide.
+    substances: [sulfur, soot, dust]
+    region_sets:
+      - [ohio_valley, indo_gangetic_plain]
+      - [quebec_adirondacks, indo_gangetic_plain]
+
+  - id: A2
+    title: "Glaciers: what darkens the ice?"
+    purpose: The glacier step with a measurable effect - darker snow.
+    explanation: >-
+      Soot, dust and smoke that settle on snow make it darker, so it absorbs more sunlight
+      and melts faster. Compare the Alps with the Himalaya. Glaciers are smaller than the
+      grid cells, so all values are averages over the whole mountain box.
+    substances: [soot, dust, smoke]
+    region_sets:
+      - [alps, central_himalaya]
+
+  # Demo B "Ships and clouds" (spec 11, Should): the region boxes are to be taken over
+  # from spec v1, which is not part of this repository. Add the two boxes to
+  # regions.yaml and uncomment this block to activate the demo.
+  # - id: B
+  #   title: "Ships and clouds"
+  #   purpose: Bridge to v1 - sulfur from ships and cloud droplet size.
+  #   explanation: >-
+  #     Ships emit sulfur that can make cloud droplets smaller. Compare a shipping lane
+  #     with a neighbouring patch of ocean.
+  #   substances: [sulfur]
+  #   region_sets:
+  #     - [shipping_lane, ocean_reference]
+
+  - id: V
+    title: "Check a known trend"
+    purpose: Validation (positive control) - the tool must find the well-known rise of CO₂.
+    explanation: >-
+      Carbon dioxide in the air rises every year. If the tool works, it must report a
+      significant upward trend that matches the published growth rate.
+    substances: [co2]
+    region_sets:
+      - [northern_hemisphere]
+    # Acceptance range for the trend (spec 13.2). OPEN ITEM of spec section 15:
+    # "Referenzwert für CO2 nachschlagen". The range below is a placeholder for the
+    # roughly 2 ppm per year growth of recent decades; replace it with the looked-up
+    # reference (KNMI Climate Explorer or literature) and set confirmed: true.
+    reference:
+      low_per_year: 1.8
+      high_per_year: 2.7
+      unit: ppm
+      source: "Placeholder range - to be confirmed against KNMI Climate Explorer / literature"
+      confirmed: false

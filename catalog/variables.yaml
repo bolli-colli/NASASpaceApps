@@ -1,0 +1,745 @@
+# Variable catalog (requirement M1, spec 10.3). Edit texts here - no programming needed.
+#
+# Fields of a variable
+#   id           unique key; also the file name in the data cache
+#   name         short English name shown on the card
+#   definition   one or two simple English sentences
+#   unit         unit used in the app (after harmonisation)
+#   source_unit  unit in the original NASA file (omit if identical to unit)
+#   product      mission / model and product short name
+#   version      product version
+#   variable     NASA variable name; a list means "sum of these" (e.g. size bins)
+#   substance    one substance id or a list (see substances.yaml)
+#   step         air | cloud | precipitation | glacier | soil | river
+#   kind         measured | model | estimate
+#   period       {start: "YYYY-MM", end: "YYYY-MM" or null for ongoing}
+#   coverage     spatial coverage and grid
+#   source_url   landing page of the product (cited on every card)
+#   caveats      warnings shown on the card (spec 15)
+#   access       how to get the data:
+#                  provider: earthaccess -> scripts/build_cache.py and live mode
+#                  provider: csv         -> export by hand, then scripts/import_csv.py
+#   derivation   {operation: sum | ratio, inputs: [variable ids]} for computed values
+#
+# NOTES
+# * Product and variable names follow spec 10.3 (checked by the team on 2026-11-14).
+# * Entries marked "ADDED" are not in table 10.3. They fill cells that matrix 10.2
+#   marks as "model" (cloud washout) and use the MERRA-2 naming scheme of the listed
+#   variables - please verify the names before relying on them.
+# * MOPITT CO (MOP03JM) and NLDAS streamflow are named in the spec without a variable
+#   name and are therefore not in the catalog yet.
+
+# ---------------------------------------------------------------------------------
+# Reusable blocks (YAML anchors) - every product is described exactly once.
+# ---------------------------------------------------------------------------------
+caveats:
+  merra2: &caveat_merra2 >-
+    Model value (MERRA-2 reanalysis), not a direct measurement. Its human-made emission
+    inventories may be only partly updated for recent years (Randles et al. 2017), so
+    cross-check trends after about 2010 with measured satellite data.
+  omi: &caveat_omi >-
+    OMI has lost part of its field of view since about 2008 ("row anomaly"); small
+    artificial changes are possible.
+  modis: &caveat_modis >-
+    The orbits of the MODIS satellites Terra and Aqua are drifting, which can create
+    artificial trends in recent years.
+  gldas: &caveat_gldas >-
+    Model value (GLDAS land surface model). Only version 2.1 (from 2000) is used, because
+    the change from version 2.0 to 2.1 breaks the series.
+  mountain: &caveat_mountain >-
+    Glaciers are smaller than the grid cells: the value is an average over the whole
+    region box, not a measurement on one glacier.
+  cygnss: &caveat_cygnss >-
+    Research product, inferred from the roughness of the ocean surface. Ocean only,
+    between 37.4°S and 37.4°N, since August 2018 - a short record.
+
+products:
+  merra2_aer: &merra2_aer
+    product: MERRA-2 M2TMNXAER
+    version: "5.12.4"
+    kind: model
+    period: {start: "1980-01", end: null}
+    coverage: global, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXAER_5.12.4/summary
+    caveats: [*caveat_merra2]
+    access: {provider: earthaccess, short_name: M2TMNXAER, version: "5.12.4"}
+
+  merra2_adg: &merra2_adg
+    product: MERRA-2 M2TMNXADG
+    version: "5.12.4"
+    kind: model
+    period: {start: "1980-01", end: null}
+    coverage: global, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXADG_5.12.4/summary
+    caveats: [*caveat_merra2]
+    access: {provider: earthaccess, short_name: M2TMNXADG, version: "5.12.4"}
+
+  merra2_flx: &merra2_flx
+    product: MERRA-2 M2TMNXFLX
+    version: "5.12.4"
+    kind: model
+    period: {start: "1980-01", end: null}
+    coverage: global, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXFLX_5.12.4/summary
+    caveats: []
+    access: {provider: earthaccess, short_name: M2TMNXFLX, version: "5.12.4"}
+
+  merra2_glc: &merra2_glc
+    product: MERRA-2 M2TMNXGLC
+    version: "5.12.4"
+    kind: model
+    period: {start: "1980-01", end: null}
+    coverage: global land ice, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXGLC_5.12.4/summary
+    caveats: [*caveat_mountain]
+    access: {provider: earthaccess, short_name: M2TMNXGLC, version: "5.12.4"}
+
+  gldas: &gldas
+    product: GLDAS GLDAS_NOAH025_M
+    version: "2.1"
+    kind: model
+    period: {start: "2000-01", end: null}
+    coverage: global land, 0.25°
+    source_url: https://disc.gsfc.nasa.gov/datasets/GLDAS_NOAH025_M_2.1/summary
+    caveats: [*caveat_gldas]
+    access: {provider: earthaccess, short_name: GLDAS_NOAH025_M, version: "2.1"}
+
+  omi_csv: &omi_csv
+    kind: measured
+    period: {start: "2004-10", end: null}
+    coverage: global, 0.25°
+    caveats: [*caveat_omi]
+    access:
+      provider: csv
+      hint: "Giovanni > Time Series, Area-Averaged > download CSV (https://giovanni.gsfc.nasa.gov/giovanni/)"
+
+  modis_cloud: &modis_cloud
+    product: MODIS MOD08_M3
+    version: "6.1"
+    substance: sulfur
+    step: cloud
+    kind: measured
+    period: {start: "2000-02", end: null}
+    coverage: global, 1°
+    source_url: https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MOD08_M3
+    caveats: [*caveat_modis]
+    access:
+      provider: csv
+      hint: "Giovanni > Time Series, Area-Averaged > download CSV (https://giovanni.gsfc.nasa.gov/giovanni/)"
+
+# ---------------------------------------------------------------------------------
+variables:
+  # ===== SULFUR ====================================================================
+  - id: so2_column_omi
+    name: Sulfur dioxide in the air column (satellite)
+    definition: >-
+      The amount of sulfur dioxide gas in the whole column of air above the ground,
+      measured by the OMI satellite instrument. Dobson Units (DU) count gas molecules.
+    unit: DU
+    product: OMI OMSO2e
+    version: "003"   # spec: check 003 vs. 004
+    variable: ColumnAmountSO2
+    substance: sulfur
+    step: air
+    source_url: https://disc.gsfc.nasa.gov/datasets/OMSO2e_003/summary
+    <<: *omi_csv
+
+  - id: so4_column_merra2
+    name: Sulfate particles in the air column
+    definition: >-
+      The mass of sulfate particles in the whole column of air above one square metre.
+      Sulfate forms from sulfur dioxide.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: SO4CMASS
+    substance: sulfur
+    step: air
+    <<: *merra2_aer
+
+  - id: so4_surface_merra2
+    name: Sulfate particles near the ground
+    definition: The mass of sulfate particles in one cubic metre of air at ground level.
+    unit: µg m-3
+    source_unit: kg m-3
+    variable: SO4SMASS
+    substance: sulfur
+    step: air
+    <<: *merra2_aer
+
+  - id: so2_column_merra2
+    name: Sulfur dioxide in the air column (model)
+    definition: The mass of sulfur dioxide gas in the whole column of air, from the model.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: SO2CMASS
+    substance: sulfur
+    step: air
+    <<: *merra2_aer
+
+  - id: sulfate_cloud_production
+    name: Sulfate formed inside clouds
+    definition: >-
+      How much sulfate is produced in cloud water each month, when dissolved sulfur
+      dioxide reacts inside the droplets.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: SUPSO4AQ
+    substance: sulfur
+    step: cloud
+    <<: *merra2_adg
+
+  - id: sulfur_cloud_washout
+    name: Sulfur washed out by storm clouds
+    definition: >-
+      How much sulfur (all sulfur species of the model added up) is removed from the air
+      inside convective clouds each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [SUSV001, SUSV002, SUSV003, SUSV004]
+    substance: sulfur
+    step: cloud
+    <<: *merra2_adg
+
+  - id: droplet_radius_modis
+    name: Cloud droplet size (Demo B)
+    definition: >-
+      The typical radius of the water droplets in liquid clouds. More sulfate particles
+      can make droplets smaller.
+    unit: µm
+    variable: Cloud_Effective_Radius_Liquid_Mean_Mean
+    <<: *modis_cloud
+
+  - id: cloud_water_path_modis
+    name: Liquid water in clouds (Demo B)
+    definition: The mass of liquid water in clouds above one square metre.
+    unit: g m-2
+    variable: Cloud_Water_Path_Liquid_Mean_Mean
+    <<: *modis_cloud
+
+  - id: cloud_optical_thickness_modis
+    name: Cloud thickness for light (Demo B)
+    definition: How strongly liquid clouds block sunlight (optical thickness, no unit).
+    unit: "1"
+    variable: Cloud_Optical_Thickness_Liquid_Mean_Mean
+    <<: *modis_cloud
+
+  - id: sulfur_wet_deposition
+    name: Sulfur falling with rain and snow
+    definition: >-
+      How much sulfur (all sulfur species of the model added up) reaches the ground with
+      rain and snow each month ("wet deposition").
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [SUWT001, SUWT002, SUWT003, SUWT004]
+    substance: sulfur
+    step: precipitation
+    <<: *merra2_adg
+
+  - id: sulfur_dry_deposition
+    name: Sulfur settling without rain
+    definition: >-
+      How much sulfur settles on the ground by itself each month, without rain or snow
+      ("dry deposition").
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [SUDP001, SUDP002, SUDP003, SUDP004]
+    substance: sulfur
+    step: precipitation
+    <<: *merra2_adg
+
+  - id: sulfur_in_precipitation
+    name: Sulfur concentration in rain and snow (estimate)
+    definition: >-
+      A rough estimate of how much sulfur one litre of rain or snow water contains:
+      wet deposition divided by the amount of precipitation.
+    unit: mg L-1
+    product: derived from MERRA-2 M2TMNXADG and M2TMNXFLX
+    version: "5.12.4"
+    variable: (SUWT001..004) / PRECTOTCORR
+    substance: sulfur
+    step: precipitation
+    kind: estimate
+    period: {start: "1980-01", end: null}
+    coverage: global, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXADG_5.12.4/summary
+    caveats: [*caveat_merra2]
+    derivation: {operation: ratio, inputs: [sulfur_wet_deposition, precipitation_merra2]}
+
+  - id: sulfur_deposition_on_ice
+    name: Sulfur deposited on the glacier region
+    definition: >-
+      All sulfur that reaches the surface of the region each month, wet and dry added up.
+      It tells you about glaciers only if the region is a mountain box.
+    unit: mg m-2 month-1
+    product: derived from MERRA-2 M2TMNXADG
+    version: "5.12.4"
+    variable: SUWT001..004 + SUDP001..004
+    substance: sulfur
+    step: glacier
+    kind: model
+    period: {start: "1980-01", end: null}
+    coverage: global, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/M2TMNXADG_5.12.4/summary
+    caveats: [*caveat_merra2, *caveat_mountain]
+    derivation: {operation: sum, inputs: [sulfur_wet_deposition, sulfur_dry_deposition]}
+
+  # ===== SOOT (black carbon) =======================================================
+  - id: soot_column
+    name: Soot in the air column
+    definition: The mass of soot (black carbon) in the whole column of air above one square metre.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: BCCMASS
+    substance: soot
+    step: air
+    <<: *merra2_aer
+
+  - id: soot_surface
+    name: Soot near the ground
+    definition: The mass of soot (black carbon) in one cubic metre of air at ground level.
+    unit: µg m-3
+    source_unit: kg m-3
+    variable: BCSMASS
+    substance: soot
+    step: air
+    <<: *merra2_aer
+
+  - id: soot_cloud_washout   # ADDED (matrix 10.2: soot x cloud = model washout)
+    name: Soot washed out by storm clouds
+    definition: How much soot is removed from the air inside convective clouds each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [BCSV001, BCSV002]
+    substance: soot
+    step: cloud
+    <<: *merra2_adg
+
+  - id: soot_wet_deposition
+    name: Soot falling with rain and snow
+    definition: How much soot reaches the ground with rain and snow each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [BCWT001, BCWT002]
+    substance: soot
+    step: precipitation
+    <<: *merra2_adg
+
+  - id: soot_dry_deposition
+    name: Soot settling without rain
+    definition: How much soot settles on the ground by itself each month, without rain or snow.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [BCDP001, BCDP002]
+    substance: soot
+    step: precipitation
+    <<: *merra2_adg
+
+  - id: snow_albedo_modis
+    name: Snow brightness (albedo)
+    definition: >-
+      How much sunlight the snow reflects, in percent. Fresh clean snow is very bright;
+      soot, dust and smoke make it darker, so it melts faster.
+    unit: "%"
+    product: MODIS MOD10A1
+    version: "061"
+    variable: Snow_Albedo_Daily_Tile
+    substance: [soot, dust, smoke]
+    step: glacier
+    kind: measured
+    period: {start: "2000-02", end: null}
+    coverage: global snow cover, 500 m (area statistics via AppEEARS)
+    source_url: https://nsidc.org/data/mod10a1/versions/61
+    caveats: [*caveat_modis, *caveat_mountain]
+    access:
+      provider: csv
+      hint: "AppEEARS area request > statistics CSV (https://appeears.earthdatacloud.nasa.gov/)"
+
+  # ===== DUST ======================================================================
+  - id: dust_column
+    name: Dust in the air column
+    definition: The mass of mineral dust in the whole column of air above one square metre.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: DUCMASS
+    substance: dust
+    step: air
+    <<: *merra2_aer
+
+  - id: dust_surface
+    name: Dust near the ground
+    definition: The mass of mineral dust in one cubic metre of air at ground level.
+    unit: µg m-3
+    source_unit: kg m-3
+    variable: DUSMASS
+    substance: dust
+    step: air
+    <<: *merra2_aer
+
+  - id: aerosol_index_omi
+    name: Absorbing particles seen from space (UV aerosol index)
+    definition: >-
+      A satellite index that rises when dust or smoke that absorbs ultraviolet light is
+      in the air. It has no unit.
+    unit: "1"
+    product: OMI OMAERUVd
+    version: "003"
+    variable: UVAerosolIndex
+    substance: [dust, smoke]
+    step: air
+    source_url: https://disc.gsfc.nasa.gov/datasets/OMAERUVd_003/summary
+    <<: *omi_csv
+
+  - id: dust_cloud_washout   # ADDED (matrix 10.2: dust x cloud = model washout)
+    name: Dust washed out by storm clouds
+    definition: >-
+      How much dust is removed from the air inside convective clouds each month.
+      Dust grains also help ice crystals form in clouds.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [DUSV001, DUSV002, DUSV003, DUSV004, DUSV005]
+    substance: dust
+    step: cloud
+    <<: *merra2_adg
+
+  - id: dust_wet_deposition
+    name: Dust falling with rain and snow
+    definition: How much dust reaches the ground with rain and snow each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [DUWT001, DUWT002, DUWT003, DUWT004, DUWT005]
+    substance: dust
+    step: precipitation
+    <<: *merra2_adg
+
+  - id: dust_dry_deposition
+    name: Dust settling without rain
+    definition: How much dust settles on the ground by itself each month, without rain or snow.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [DUDP001, DUDP002, DUDP003, DUDP004, DUDP005]
+    substance: dust
+    step: precipitation
+    <<: *merra2_adg
+
+  # ===== SMOKE (organic carbon) ====================================================
+  - id: smoke_column
+    name: Smoke particles in the air column
+    definition: >-
+      The mass of organic carbon particles (mostly from fires) in the whole column of air
+      above one square metre.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: OCCMASS
+    substance: smoke
+    step: air
+    <<: *merra2_aer
+
+  - id: smoke_cloud_washout   # ADDED (matrix 10.2: smoke x cloud = model washout)
+    name: Smoke washed out by storm clouds
+    definition: How much smoke is removed from the air inside convective clouds each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [OCSV001, OCSV002]
+    substance: smoke
+    step: cloud
+    <<: *merra2_adg
+
+  - id: smoke_wet_deposition
+    name: Smoke falling with rain and snow
+    definition: How much smoke reaches the ground with rain and snow each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [OCWT001, OCWT002]
+    substance: smoke
+    step: precipitation
+    <<: *merra2_adg
+
+  - id: smoke_dry_deposition
+    name: Smoke settling without rain
+    definition: How much smoke settles on the ground by itself each month, without rain or snow.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [OCDP001, OCDP002]
+    substance: smoke
+    step: precipitation
+    <<: *merra2_adg
+
+  # ===== NITROGEN ==================================================================
+  - id: no2_column_omi
+    name: Nitrogen dioxide in the lower air (satellite)
+    definition: >-
+      The number of nitrogen dioxide molecules in the lowest layer of the atmosphere above
+      one square centimetre, measured where no clouds are in the way.
+    unit: molecules cm-2
+    product: OMI OMNO2d
+    version: "003"
+    variable: ColumnAmountNO2TropCloudScreened
+    substance: nitrogen
+    step: air
+    source_url: https://disc.gsfc.nasa.gov/datasets/OMNO2d_003/summary
+    <<: *omi_csv
+
+  # ===== MICROPLASTICS =============================================================
+  - id: microplastics_ocean
+    name: Microplastics at the ocean surface
+    definition: >-
+      The estimated number of microplastic pieces per square kilometre of ocean surface.
+      Useful in front of big river mouths.
+    unit: "# km-2"
+    product: CYGNSS CYGNSS_L3_MICROPLASTIC_V3.2
+    version: "3.2"
+    variable: mp_concentration
+    substance: microplastics
+    step: river
+    kind: measured   # spec matrix 10.2; see the caveat: inferred, not sampled
+    period: {start: "2018-08", end: null}
+    coverage: ocean only, 37.4°S to 37.4°N, 0.25°
+    source_url: https://podaac.jpl.nasa.gov/dataset/CYGNSS_L3_MICROPLASTIC_V3.2
+    caveats: [*caveat_cygnss]
+    access:
+      provider: csv
+      hint: "PO.DAAC via earthaccess; average the box yourself, then import as CSV"
+
+  # ===== NATURAL SOURCES ===========================================================
+  - id: dms_column
+    name: Sulfur gas from ocean plankton (DMS)
+    definition: >-
+      The mass of dimethyl sulfide in the air column. Tiny ocean plants release this
+      natural sulfur gas.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: DMSCMASS
+    substance: natural
+    step: air
+    <<: *merra2_aer
+
+  - id: sea_salt_column
+    name: Sea salt in the air column
+    definition: The mass of sea salt particles from sea spray in the whole column of air.
+    unit: mg m-2
+    source_unit: kg m-2
+    variable: SSCMASS
+    substance: natural
+    step: air
+    <<: *merra2_aer
+
+  - id: volcanic_so2_emission
+    name: Sulfur dioxide from volcanoes
+    definition: How much sulfur dioxide volcanoes emit each month (eruptions and quiet outgassing).
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [SO2EMVE, SO2EMVN]
+    substance: natural
+    step: air
+    <<: *merra2_adg
+
+  - id: sea_salt_cloud_washout   # ADDED (matrix 10.2: natural x cloud = model)
+    name: Sea salt washed out by storm clouds
+    definition: How much sea salt is removed from the air inside convective clouds each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [SSSV001, SSSV002, SSSV003, SSSV004, SSSV005]
+    substance: natural
+    step: cloud
+    <<: *merra2_adg
+
+  - id: sea_salt_wet_deposition   # ADDED (matrix 10.2: natural x precipitation = model)
+    name: Sea salt falling with rain and snow
+    definition: How much sea salt reaches the ground with rain and snow each month.
+    unit: mg m-2 month-1
+    source_unit: kg m-2 s-1
+    variable: [SSWT001, SSWT002, SSWT003, SSWT004, SSWT005]
+    substance: natural
+    step: precipitation
+    <<: *merra2_adg
+
+  # ===== CO (transport marker) =====================================================
+  - id: co_airs
+    name: Carbon monoxide in the air (satellite)
+    definition: >-
+      The share of carbon monoxide in the air, measured by the AIRS instrument.
+      CO lives for weeks, so it shows where the wind carries pollution.
+    unit: ppbv
+    product: AIRS AIRS3STM
+    version: "7.0"
+    variable: CO_VMR_A
+    substance: co
+    step: air
+    kind: measured
+    period: {start: "2002-09", end: null}
+    coverage: global, 1°
+    source_url: https://disc.gsfc.nasa.gov/datasets/AIRS3STM_7.0/summary
+    caveats: []
+    access:
+      provider: csv
+      hint: "Giovanni > Time Series, Area-Averaged > download CSV (https://giovanni.gsfc.nasa.gov/giovanni/)"
+
+  # ===== CO2 (validation case V) ===================================================
+  # Spec 10.3: "OCO-2 L3 oder AIRS (Produkt und Laufzeit prüfen)" - OPEN ITEM.
+  # This entry uses the OCO-2 GEOS Level 3 monthly product. Its record is shorter than
+  # 15 years, so the label "Strong" (spec 13.2) is out of reach with this product alone;
+  # the team has to settle the product before the validation case can pass.
+  - id: co2_column
+    name: Carbon dioxide in the air column
+    definition: >-
+      The average share of carbon dioxide in the whole column of air, in parts per
+      million (ppm).
+    unit: ppm
+    source_unit: mol mol-1
+    product: OCO-2 OCO2_GEOS_L3CO2_MONTH
+    version: "10r"
+    variable: XCO2
+    substance: co2
+    step: air
+    kind: model   # satellite data assimilated into the GEOS model
+    period: {start: "2015-01", end: null}
+    coverage: global, 0.5° x 0.625°
+    source_url: https://disc.gsfc.nasa.gov/datasets/OCO2_GEOS_L3CO2_MONTH_10r/summary
+    caveats: []
+    access: {provider: earthaccess, short_name: OCO2_GEOS_L3CO2_MONTH, version: "10r"}
+
+  # ===== WATER (the carrier) =======================================================
+  - id: precipitation_merra2
+    name: Rain and snow (model)
+    definition: The total amount of rain and snow that falls in a month, as a layer of water.
+    unit: mm month-1
+    source_unit: kg m-2 s-1
+    variable: PRECTOTCORR
+    substance: water
+    step: precipitation
+    <<: *merra2_flx
+
+  - id: snowfall_merra2
+    name: Snowfall (model)
+    definition: The amount of snow that falls in a month, as a layer of melted water.
+    unit: mm month-1
+    source_unit: kg m-2 s-1
+    variable: PRECSNO
+    substance: water
+    step: precipitation
+    <<: *merra2_flx
+
+  - id: precipitation_imerg
+    name: Rain and snow (satellite)
+    definition: >-
+      The total amount of rain and snow that falls in a month, measured by a fleet of
+      satellites (GPM IMERG).
+    unit: mm month-1
+    source_unit: mm h-1
+    product: GPM GPM_3IMERGM
+    version: "07"
+    variable: precipitation
+    substance: water
+    step: precipitation
+    kind: measured
+    period: {start: "2000-06", end: null}
+    coverage: global, 0.1°
+    source_url: https://disc.gsfc.nasa.gov/datasets/GPM_3IMERGM_07/summary
+    caveats: []
+    access: {provider: earthaccess, short_name: GPM_3IMERGM, version: "07", group: Grid}
+
+  - id: glacier_runoff_merra2
+    name: Meltwater running off glaciers
+    definition: How much meltwater runs off the ice surface each month, as a layer of water.
+    unit: mm month-1
+    source_unit: kg m-2 s-1
+    variable: RUNOFF
+    substance: water
+    step: glacier
+    <<: *merra2_glc
+
+  - id: glacier_snow_mass_merra2
+    name: Snow lying on glaciers
+    definition: The mass of snow that lies on top of the glacier ice, per square metre.
+    unit: kg m-2
+    variable: SNOMAS_GL
+    substance: water
+    step: glacier
+    <<: *merra2_glc
+
+  - id: snow_water_gldas
+    name: Water stored in the snowpack
+    definition: How much water the snow on the ground would give if it all melted, per square metre.
+    unit: kg m-2
+    variable: SWE_inst
+    substance: water
+    step: glacier
+    <<: *gldas
+
+  - id: snowfall_gldas
+    name: Snowfall (land model)
+    definition: The amount of snow that falls in a month, as a layer of melted water.
+    unit: mm month-1
+    source_unit: kg m-2 s-1
+    variable: Snowf_tavg
+    substance: water
+    step: glacier
+    <<: *gldas
+
+  - id: snowmelt_gldas
+    name: Snowmelt
+    definition: How much snow melts in a month, as a layer of water.
+    unit: mm month-1
+    source_unit: kg m-2 (3h)-1
+    variable: Qsm_acc
+    substance: water
+    step: glacier
+    <<: *gldas
+
+  - id: soil_moisture_0_10_gldas
+    name: Soil water, 0–10 cm deep
+    definition: The mass of water in the top 10 cm of soil, per square metre.
+    unit: kg m-2
+    variable: SoilMoi0_10cm_inst
+    substance: water
+    step: soil
+    <<: *gldas
+
+  - id: soil_moisture_10_40_gldas
+    name: Soil water, 10–40 cm deep
+    definition: The mass of water in the soil between 10 and 40 cm depth, per square metre.
+    unit: kg m-2
+    variable: SoilMoi10_40cm_inst
+    substance: water
+    step: soil
+    <<: *gldas
+
+  - id: soil_moisture_40_100_gldas
+    name: Soil water, 40–100 cm deep
+    definition: The mass of water in the soil between 40 and 100 cm depth, per square metre.
+    unit: kg m-2
+    variable: SoilMoi40_100cm_inst
+    substance: water
+    step: soil
+    <<: *gldas
+
+  - id: soil_moisture_100_200_gldas
+    name: Soil water, 100–200 cm deep
+    definition: The mass of water in the soil between 100 and 200 cm depth, per square metre.
+    unit: kg m-2
+    variable: SoilMoi100_200cm_inst
+    substance: water
+    step: soil
+    <<: *gldas
+
+  - id: seepage_gldas
+    name: Water seeping to groundwater
+    definition: >-
+      How much water drains downwards out of the soil each month and later feeds rivers
+      as groundwater ("baseflow").
+    unit: mm month-1
+    source_unit: kg m-2 (3h)-1
+    variable: Qsb_acc
+    substance: water
+    step: soil
+    <<: *gldas
+
+  - id: surface_runoff_gldas
+    name: Water running off into rivers
+    definition: How much rain and meltwater runs off over the ground into rivers each month.
+    unit: mm month-1
+    source_unit: kg m-2 (3h)-1
+    variable: Qs_acc
+    substance: water
+    step: river
+    <<: *gldas
