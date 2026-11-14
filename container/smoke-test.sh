@@ -73,7 +73,7 @@ if grep -qi '^server: nginx/' "$headers"; then fail "nginx version disclosed"; f
 pass "security headers set, nginx version hidden"
 ws_code="$(curl -s -o /dev/null -w '%{http_code}' --http1.1 --max-time 3 \
   -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' \
-  -H 'Sec-WebSocket-Key: c21va2UtdGVzdC1rZXktMTIzNA==' "$BASE/_stcore/stream" || true)"
+  -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' "$BASE/_stcore/stream" || true)"
 [ "$ws_code" = "101" ] || fail "websocket upgrade through nginx returned '$ws_code', expected 101"
 pass "websocket upgrade through nginx (101)"
 
