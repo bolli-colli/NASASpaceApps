@@ -42,8 +42,10 @@
 caveats:
   merra2: &caveat_merra2 >-
     Model value (MERRA-2 reanalysis), not a direct measurement. Its human-made emission
-    inventories may be only partly updated for recent years (Randles et al. 2017), so
-    cross-check trends after about 2010 with measured satellite data.
+    inventories are not kept up to date (Randles et al. 2017): over the Ohio Valley,
+    MERRA-2 SO₂ shows almost no change since 2005 (−3 % per decade) while the OMI
+    satellite measures −64 % per decade. Trust measured satellite data (OMI) for trends
+    of human-made pollution after about 2005.
   omi: &caveat_omi >-
     OMI has lost part of its field of view since about 2008 ("row anomaly"); small
     artificial changes are possible.
