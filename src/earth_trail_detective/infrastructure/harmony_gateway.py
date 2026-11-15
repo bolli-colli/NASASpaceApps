@@ -35,6 +35,7 @@ CMR_COLLECTIONS_URL = "https://cmr.earthdata.nasa.gov/search/collections.json"
 _REQUEST_TIMEOUT_SECONDS = 60
 _DATA_LINK = "data"
 _JOB_SUCCESSFUL = "successful"
+_JOB_PAUSED = "paused"
 # harmony-py reads its number of parallel downloads from this variable (default 3).
 _WORKERS_VARIABLE = "NUM_REQUESTS_WORKERS"
 _PARALLEL_DOWNLOADS = "8"
@@ -140,6 +141,12 @@ class HarmonyGateway(GriddedGateway):
         # ``wait_for_processing`` also returns for paused or canceled jobs, whose
         # results are incomplete - never turn those into a series.
         status = client.status(job_id)["status"]
+        if status == _JOB_PAUSED:
+            # Harmony answers a repeated request with the earlier job, which may
+            # still sit paused from a run without ``skip_preview``.
+            client.resume(job_id)
+            client.wait_for_processing(job_id)
+            status = client.status(job_id)["status"]
         if status != _JOB_SUCCESSFUL:
             raise LiveAccessError(f"Harmony job {job_id} ended as '{status}', not complete.")
         # Start all downloads first (harmony-py loads them in parallel), then read them.
