@@ -660,7 +660,7 @@ the 3-minute user test and the offline test with Wi-Fi switched off.
 | Hamed-Rao | With the conservative safeguard described in 3.7. |
 | Records below 10 years | Capped at *Weak* plus warning (the spec leaves this case open). |
 | Demo B "Ships and clouds" | Variables are in the catalog; the region boxes come from spec v1 and are missing – see the commented block in `catalog/demos.yaml`. |
-| Validation case CO₂ | Uses OCO-2 GEOS L3 (from 2015). With under 15 years it cannot reach *Strong*; product and reference value are open items of the spec. The reference range in `catalog/demos.yaml` is a placeholder marked `confirmed: false`. |
+| Validation case CO₂ | Uses OCO-2 GEOS L3 (2015-01 to 2022-02, no newer version). The trend matches the reference: the app finds 2.47 ppm/yr (95 % CI 2.42–2.54) against NOAA's global growth of 2.50 ppm/yr for 2015–2021 (accepted range 2.3–2.7, `catalog/demos.yaml`). With about 7 years the label stays *Weak*, so the criterion "Evidence label is Strong" fails – a longer CO₂ product would be needed. |
 | Catalog additions | Cloud-washout variables (`BCSV`, `DUSV`, `OCSV`, `SSSV`, `SSWT`) fill matrix cells marked "model" but are not in table 10.3 – verify the names. |
 | Student regions | Boxes marked `PROPOSAL` in `catalog/regions.yaml` are suggestions. |
 | Not implemented | S8 ground-data comparison; C1 data access for CYGNSS (catalog entry only), C3 arrow map, C4 event analysis, C5 trend map, C7 lagged correlation, C8 AI search, C9 Docker; water vapour and cloud water for the *water* row; MOPITT CO; NLDAS streamflow. |

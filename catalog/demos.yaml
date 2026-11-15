@@ -50,13 +50,15 @@ demos:
     substances: [co2]
     region_sets:
       - [northern_hemisphere]
-    # Acceptance range for the trend (spec 13.2). OPEN ITEM of spec section 15:
-    # "Referenzwert für CO2 nachschlagen". The range below is a placeholder for the
-    # roughly 2 ppm per year growth of recent decades; replace it with the looked-up
-    # reference (KNMI Climate Explorer or literature) and set confirmed: true.
+    # Acceptance range for the trend (spec 13.2), checked 2026-11-15 against NOAA GML
+    # (https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_gr_gl.txt). The OCO-2 GEOS product
+    # covers 2015-01 to 2022-02, so the reference is the global annual growth of the full
+    # years 2015-2021: 2.95, 2.83, 2.14, 2.39, 2.50, 2.32, 2.38 ppm -> mean 2.50 ppm/yr,
+    # standard deviation 0.29, standard error of the 7-year mean 0.11. Range = mean ± 2 SE.
+    # (The app found 2.47 ppm/yr, 95 % CI 2.42-2.54, on the cached series.)
     reference:
-      low_per_year: 1.8
+      low_per_year: 2.3
       high_per_year: 2.7
       unit: ppm
-      source: "Placeholder range - to be confirmed against KNMI Climate Explorer / literature"
-      confirmed: false
+      source: "NOAA GML global CO₂ growth rate, mean 2015–2021 = 2.50 ppm/yr ± 2 standard errors (gml.noaa.gov/ccgg/trends/gl_gr.html)"
+      confirmed: true

@@ -606,10 +606,10 @@ variables:
       hint: "Giovanni > Time Series, Area-Averaged > download CSV (https://giovanni.gsfc.nasa.gov/giovanni/)"
 
   # ===== CO2 (validation case V) ===================================================
-  # Spec 10.3: "OCO-2 L3 oder AIRS (Produkt und Laufzeit prüfen)" - OPEN ITEM.
-  # This entry uses the OCO-2 GEOS Level 3 monthly product. Its record is shorter than
-  # 15 years, so the label "Strong" (spec 13.2) is out of reach with this product alone;
-  # the team has to settle the product before the validation case can pass.
+  # Spec 10.3: "OCO-2 L3 oder AIRS (Produkt und Laufzeit prüfen)" - checked 2026-11-15:
+  # OCO-2 GEOS L3 monthly 10r runs 2015-01 to 2022-02 (no newer version in CMR). Its
+  # record is shorter than 15 years, so the label "Strong" (spec 13.2) is out of reach
+  # with this product alone; the trend itself matches NOAA (see demos.yaml, demo V).
   - id: co2_column
     name: Carbon dioxide in the air column
     definition: >-
@@ -623,7 +623,7 @@ variables:
     substance: co2
     step: air
     kind: model   # satellite data assimilated into the GEOS model
-    period: {start: "2015-01", end: null}
+    period: {start: "2015-01", end: "2022-02"}
     coverage: global, 0.5° x 0.625°
     source_url: https://disc.gsfc.nasa.gov/datasets/OCO2_GEOS_L3CO2_MONTH_10r/summary
     caveats: []
