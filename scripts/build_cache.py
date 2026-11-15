@@ -21,6 +21,7 @@ and load them with ``scripts/import_csv.py``.
 """
 
 import argparse
+import logging
 from datetime import date
 
 from earth_trail_detective.application.cache_filler import FetchJob
@@ -94,4 +95,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # progress lines of the gateways (e.g. "CLDPROP_M3_MODIS_Aqua: 30/291 files")
+    logging.basicConfig(level=logging.INFO, format="      %(message)s")
     main()

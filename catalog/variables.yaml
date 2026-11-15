@@ -50,6 +50,10 @@ caveats:
   modis: &caveat_modis >-
     The orbits of the MODIS satellites Terra and Aqua are drifting, which can create
     artificial trends in recent years.
+  cldprop: &caveat_cldprop >-
+    MODIS Aqua only (afternoon overpass, from July 2002), processed with the MODIS/VIIRS
+    continuity algorithm (CLDPROP) instead of the standard MOD08_M3 product. Values are
+    means over liquid-water clouds only; cloud-free months or cells are missing.
   gldas: &caveat_gldas >-
     Model value (GLDAS land surface model). Only version 2.1 (from 2000) is used, because
     the change from version 2.0 to 2.1 breaks the series.
@@ -121,18 +125,19 @@ products:
     caveats: [*caveat_omi]
 
   modis_cloud: &modis_cloud
-    product: MODIS MOD08_M3
-    version: "6.1"
+    product: MODIS CLDPROP_M3_MODIS_Aqua
+    version: "1.1"
     substance: sulfur
     step: cloud
     kind: measured
-    period: {start: "2000-02", end: null}
+    period: {start: "2002-07", end: null}
     coverage: global, 1°
-    source_url: https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/MOD08_M3
-    caveats: [*caveat_modis]
-    access:
-      provider: csv
-      hint: "Giovanni > Time Series, Area-Averaged > download CSV (https://giovanni.gsfc.nasa.gov/giovanni/)"
+    source_url: https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/CLDPROP_M3_MODIS_Aqua
+    caveats: [*caveat_modis, *caveat_cldprop]
+    # MOD08_M3 is only served as HDF4 (no Harmony netCDF output), so the netCDF-4
+    # continuity product is read with earthaccess (needs LAADS approved in the
+    # Earthdata profile). One file is ~600 MB; only the three arrays are read.
+    access: {provider: earthaccess, short_name: CLDPROP_M3_MODIS_Aqua, version: "1.1"}
 
 # ---------------------------------------------------------------------------------
 variables:
@@ -219,21 +224,21 @@ variables:
       The typical radius of the water droplets in liquid clouds. More sulfate particles
       can make droplets smaller.
     unit: µm
-    variable: Cloud_Effective_Radius_Liquid_Mean_Mean
+    variable: Cloud_Effective_Radius_Liquid/Mean
     <<: *modis_cloud
 
   - id: cloud_water_path_modis
     name: Liquid water in clouds (Demo B)
     definition: The mass of liquid water in clouds above one square metre.
     unit: g m-2
-    variable: Cloud_Water_Path_Liquid_Mean_Mean
+    variable: Cloud_Water_Path_Liquid/Mean
     <<: *modis_cloud
 
   - id: cloud_optical_thickness_modis
     name: Cloud thickness for light (Demo B)
     definition: How strongly liquid clouds block sunlight (optical thickness, no unit).
     unit: "1"
-    variable: Cloud_Optical_Thickness_Liquid_Mean_Mean
+    variable: Cloud_Optical_Thickness_Liquid/Mean
     <<: *modis_cloud
 
   - id: sulfur_wet_deposition

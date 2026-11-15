@@ -9,12 +9,13 @@ import pytest
 from conftest import make_series
 from earth_trail_detective.application.sources import RoutingGateway
 from earth_trail_detective.domain.errors import LiveAccessError
-from earth_trail_detective.domain.models import Period
-from earth_trail_detective.infrastructure.earthaccess_gateway import EarthaccessGateway
+from earth_trail_detective.domain.models import BoundingBox, Period
+from earth_trail_detective.infrastructure.earthaccess_gateway import EarthaccessGateway, _workers
 from earth_trail_detective.infrastructure.giovanni_gateway import GiovanniGateway
+from earth_trail_detective.infrastructure.grid_reduction import area_mean
 from earth_trail_detective.infrastructure.gridded_gateway import AreaMeanCollector
 from earth_trail_detective.infrastructure.harmony_gateway import HarmonyGateway, yearly_chunks
-from earth_trail_detective.infrastructure.hoss_reader import load_grid
+from earth_trail_detective.infrastructure.hoss_reader import load_grid, load_grouped_grid
 
 
 class FakeGateway:
@@ -46,6 +47,10 @@ def test_catalog_products_are_assigned_to_the_right_gateway(catalog):
     for variable_id in ("so4_column_merra2", "snow_water_gldas", "precipitation_imerg"):
         assert harmony.supports(catalog.variable(variable_id))
     assert earthaccess.supports(catalog.variable("co2_column"))  # no Harmony service
+    # MODIS cloud properties: CLDPROP netCDF-4 files, read array by array.
+    for variable_id in ("cloud_optical_thickness_modis", "droplet_radius_modis"):
+        variable = catalog.variable(variable_id)
+        assert earthaccess.supports(variable) and "/" in variable.source_variables[0]
     assert not harmony.supports(catalog.variable("snow_albedo_modis"))  # CSV import only
 
 
@@ -100,3 +105,45 @@ def test_hoss_reader_finds_variables_in_nested_groups(tmp_path):
     assert list(loaded["lat"]) == [10.0, 11.0] and loaded["ColumnAmountSO2"].shape == (2, 3)
     with pytest.raises(LiveAccessError, match="Unexpected layout"):
         load_grid(path, ("NotThere",))
+
+
+def test_grouped_reader_reads_group_arrays_of_a_cldprop_like_file(tmp_path):
+    """Root lat/lon, one group per variable, stored (lon, lat) as scaled int16 with fill."""
+    h5netcdf = pytest.importorskip("h5netcdf")
+    path = tmp_path / "CLDPROP_M3_like.nc"
+    with h5netcdf.File(path, "w") as file:
+        file.dimensions = {"latitude": 2, "longitude": 3}
+        file.create_variable("latitude", ("latitude",), "f4", data=np.array([10.0, 11.0]))
+        file.create_variable("longitude", ("longitude",), "f4", data=np.array([1.0, 2.0, 3.0]))
+        thickness = file.create_group("Cloud_Optical_Thickness_Liquid").create_variable(
+            "Mean", ("longitude", "latitude"), "i2", fillvalue=-9999
+        )
+        thickness.attrs["scale_factor"] = 0.01
+        thickness[...] = np.array([[100, 400], [200, -9999], [300, 600]])
+        water = file.create_group("Cloud_Water_Path_Liquid").create_variable(
+            "Mean", ("longitude", "latitude"), "f4"
+        )
+        water[...] = np.full((3, 2), 50.0)
+
+    names = ("Cloud_Optical_Thickness_Liquid/Mean", "Cloud_Water_Path_Liquid/Mean")
+    loaded = load_grouped_grid(path, names)
+    thickness = loaded["Cloud_Optical_Thickness_Liquid/Mean"]
+    assert thickness.dims == ("lat", "lon")  # turned from (lon, lat)
+    np.testing.assert_allclose(thickness.values, [[1.0, 2.0, 3.0], [4.0, np.nan, 6.0]])
+    assert float(loaded["Cloud_Water_Path_Liquid/Mean"].mean()) == 50.0  # same name, other group
+    box = BoundingBox(south=9.5, north=11.5, west=0.5, east=3.5)
+    assert np.isfinite(area_mean(loaded, (names[0],), box))  # fill value ignored
+    with pytest.raises(LiveAccessError, match="not found"):
+        load_grouped_grid(path, ("Cloud_Effective_Radius_Liquid/Mean",))
+
+
+def test_number_of_parallel_files_comes_from_the_environment(monkeypatch):
+    monkeypatch.delenv("ETD_WORKERS", raising=False)
+    assert _workers() == 6
+    monkeypatch.setenv("ETD_WORKERS", "12")
+    assert _workers() == 12
+    monkeypatch.setenv("ETD_WORKERS", "0")
+    assert _workers() == 1  # at least one file at a time
+    monkeypatch.setenv("ETD_WORKERS", "many")
+    with pytest.raises(LiveAccessError, match="whole number"):
+        _workers()

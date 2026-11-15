@@ -17,6 +17,7 @@ CATALOG_DIR_VARIABLE = "ETD_CATALOG_DIR"
 DATA_DIR_VARIABLE = "ETD_DATA_DIR"
 TOKEN_VARIABLE = "EARTHDATA_TOKEN"  # Earthdata Login token for live access
 FETCH_VARIABLE = "ETD_FETCH"  # may the app fetch missing data itself? (FetchPolicy)
+WORKERS_VARIABLE = "ETD_WORKERS"  # files read in parallel by the earthaccess gateway
 ENV_FILE = PROJECT_ROOT / ".env"  # optional, ignored by git
 
 

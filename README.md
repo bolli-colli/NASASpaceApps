@@ -103,7 +103,10 @@ All NASA data needs a free **Earthdata Login**.
 2. In your profile choose *Generate Token* and copy the token.
 3. Approve the GES DISC archive once, otherwise downloads fail with an authorisation
    error even with a valid token: profile → *Applications* → *Authorized Apps* →
-   *Approve More Applications* → **NASA GESDISC DATA ARCHIVE**.
+   *Approve More Applications* → **NASA GESDISC DATA ARCHIVE**. For the MODIS cloud
+   properties also approve **LAADS DAAC** (easiest: log in once at
+   <https://ladsweb.modaps.eosdis.nasa.gov/> and accept); without it LAADS answers
+   `access_denied`.
 4. Giovanni and AppEEARS (section 4b) need the same account: click *Login* on their
    pages before you plot or download.
 5. Put the token into a `.env` file – never write it into the code and never commit it
@@ -119,7 +122,7 @@ All NASA data needs a free **Earthdata Login**.
    over `.env`, or `.streamlit/secrets.toml` (copy `.streamlit/secrets.toml.example`),
    which is used only if neither of the other two is set.
 
-### 4a. Scripted: MERRA-2, GLDAS, IMERG, OMI and OCO-2 GEOS
+### 4a. Scripted: MERRA-2, GLDAS, IMERG, OMI, MODIS clouds and OCO-2 GEOS
 
 ```bash
 pip install -e ".[live]"
@@ -141,8 +144,11 @@ Three NASA routes are used, chosen per product in the catalog (`access.provider`
 - **Harmony** for MERRA-2, GLDAS and IMERG: NASA's servers cut the region box out of
   every monthly file, the script downloads the small results and averages them.
   One job per region and year.
-- **earthaccess** for OCO-2 GEOS, which Harmony does not serve: one whole file per month
-  is read over the network (about a minute per file).
+- **earthaccess** for OCO-2 GEOS and the MODIS cloud properties (`CLDPROP_M3_MODIS_Aqua`),
+  which Harmony does not serve as netCDF: files are read over the network, one per month
+  (about a minute per OCO-2 file; for the ~600 MB MODIS files only the three cloud
+  arrays are read). Several files are read at the same time (`ETD_WORKERS`, default 6):
+  the whole MODIS cloud record (291 months) takes about 15 minutes.
 
 **Start with the quick trial** to see that your token and approvals work.
 
@@ -151,7 +157,7 @@ what an analysis needs (or `refresh` for an extra "Update from NASA" button). De
 `off` – cache only. Details: `docs/DOCUMENTATION.md`, section 4. Every product is saved as soon as it is
 complete and cached series are skipped, so an interrupted run can simply be started again.
 
-### 4b. By hand: MODIS, AIRS, CYGNSS (and OMI as a fallback)
+### 4b. By hand: MODIS snow albedo, AIRS, CYGNSS (and OMI as a fallback)
 
 These products have no scripted access, so they are exported once by hand. The same way
 works for OMI if the scripted Giovanni route fails:
@@ -248,7 +254,7 @@ tests/                      pytest suite
 |--------|---------------|--------|
 | [NASA GES DISC](https://disc.gsfc.nasa.gov/) | MERRA-2 (M2TMNXAER, M2TMNXADG, M2TMNXFLX, M2TMNXGLC), GLDAS Noah 2.1, GPM IMERG, OMI (OMSO2e, OMNO2d, OMAERUVd), AIRS, OCO-2 GEOS | Earthdata Login |
 | [NSIDC](https://nsidc.org/data/mod10a1/versions/61) via AppEEARS | MODIS MOD10A1 snow albedo | Earthdata Login |
-| [LAADS DAAC](https://ladsweb.modaps.eosdis.nasa.gov/) | MODIS MOD08_M3 cloud properties | Earthdata Login |
+| [LAADS DAAC](https://ladsweb.modaps.eosdis.nasa.gov/) | MODIS/Aqua cloud properties CLDPROP_M3_MODIS_Aqua (continuity product, netCDF-4) | Earthdata Login + LAADS approved |
 | [PO.DAAC](https://podaac.jpl.nasa.gov/dataset/CYGNSS_L3_MICROPLASTIC_V3.2) | CYGNSS microplastics | Earthdata Login |
 
 Each variable cites its product page in `catalog/variables.yaml` and on its card. NASA

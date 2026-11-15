@@ -69,7 +69,7 @@ infrastructure/
   gridded_gateway.py  shared skeleton of the NASA gateways (template method)
   giovanni_gateway.py daily OMI via Giovanni in Harmony (server-side area averages)
   harmony_gateway.py  MERRA-2, GLDAS, IMERG via NASA Harmony (server-side subsetting)
-  earthaccess_gateway.py  products without a Harmony service (OCO-2 GEOS): whole files
+  earthaccess_gateway.py  products without a Harmony service (OCO-2 GEOS, MODIS CLDPROP): whole files
   hoss_reader.py      reads the subset files Harmony returns
 presentation/
   main.py             page layout and control flow
@@ -315,7 +315,7 @@ Three gateways fetch data; the catalog says per product which one (`access.provi
 |----------|----------|-----|
 | `giovanni` | OMI (`OMSO2e`, `OMNO2d`, `OMAERUVd`) | Giovanni's area-averaging service, run by Harmony: NASA's servers compute the area mean, one small CSV per variable and region. |
 | `harmony` | MERRA-2, GLDAS, GPM IMERG | NASA's servers cut the region box and the wanted variables out of every file; only the small results are downloaded. |
-| `earthaccess` | OCO-2 GEOS (`OCO2_GEOS_L3CO2_MONTH`) | Harmony offers no service for it, so whole files are read over the network. |
+| `earthaccess` | OCO-2 GEOS (`OCO2_GEOS_L3CO2_MONTH`), MODIS cloud properties (`CLDPROP_M3_MODIS_Aqua`) | Harmony offers no (netCDF) service for them, so files are read over the network. MOD08_M3 is only available as HDF4, which the app cannot read; CLDPROP is the netCDF-4 MODIS/VIIRS continuity product (Aqua, from 2002-07). |
 
 Harmony is preferred wherever it is offered. Measured on 2026-11-14 for eight monthly
 MERRA-2 files and three variables: 28 s through Harmony, 396 s by reading whole files –
@@ -419,6 +419,22 @@ for granule, handle in zip(granules, earthaccess.open(granules)):  # HTTPS, no d
 - Works for any regular lat/lon netCDF-4/HDF5 grid with one file per month, so a product
   can be switched back to `provider: earthaccess` in the catalog if Harmony is down –
   at roughly one minute per file.
+- **Grouped variables** (`group/variable` in the catalog, e.g.
+  `Cloud_Optical_Thickness_Liquid/Mean` in the MODIS CLDPROP files) are read by
+  `hoss_reader.load_grouped_grid`: it opens the file once with h5netcdf, reads the root
+  `latitude`/`longitude` and only the requested arrays (fill value and scale factor
+  decoded as xarray does; `(lon, lat)` storage is turned to `(lat, lon)`). A CLDPROP file
+  is ~600 MB, but the three cloud arrays take ~11 s over HTTPS.
+- **Parallel reading:** reading is limited by latency (many small byte-range requests),
+  not bandwidth. With a token, `ETD_WORKERS` files (default 6) are read at the same time,
+  each in its own process (`area_means_of_file`; processes because h5py runs every HDF5
+  call under one global lock). Each worker opens the file with fsspec and a 1 MB block
+  cache – three times faster than fsspec's default 5 MB read-ahead. Measured for one
+  year of CLDPROP (13 files, 3 variables × 3 regions): 1 worker ~350 s, 6 workers 50 s,
+  12 workers 32 s, identical values. A file is retried three times on network errors;
+  if processes cannot be started, the gateway falls back to one file at a time.
+- LAADS files need the **LAADS DAAC** application approved in the Earthdata profile;
+  otherwise the request ends in `oauth/callback?error=access_denied`.
 
 In both cases `build_series` then converts the unit and builds the `MonthlySeries`.
 
