@@ -1,3 +1,28 @@
+# Team notes kept outside the repository
 research/
 wiki/
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets (Earthdata token) - never commit
+.streamlit/secrets.toml
+.env
+
+# Artificial development data (scripts/make_synthetic_cache.py)
+data/synthetic/
+
+# Hand-downloaded CSV exports (Giovanni, AppEEARS) before the import
+data/raw/
+.idea
 data-connection-repos/
+
+# macOS folder metadata
+.DS_Store
+
+# Container build output (image archives)
+dist/

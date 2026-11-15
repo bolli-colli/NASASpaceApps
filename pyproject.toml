@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "earth-trail-detective"
+version = "0.1.0"
+description = "Follow a pollutant through the water cycle and test every step for a trend."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "streamlit>=1.40",      # user interface
+    "plotly>=5.20",         # interactive charts
+    "pandas>=2.1",          # time series tables
+    "numpy>=1.26",          # numerics
+    "scipy>=1.11",          # Sen's slope (Theil-Sen)
+    "statsmodels>=0.14",    # OLS with confidence interval, Benjamini-Hochberg
+    "pymannkendall>=1.4.3", # Mann-Kendall tests incl. Hamed-Rao correction
+    "pyyaml>=6.0",          # catalog files
+    "pyarrow>=15",          # Parquet data cache
+]
+
+[project.optional-dependencies]
+# Live access to NASA Earthdata and scripts/build_cache.py
+live = ["earthaccess>=0.11", "harmony-py>=1.0", "xarray>=2024.10", "h5netcdf>=1.3", "h5py>=3.8"]
+# Tests and code style
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["earth_trail_detective", "conftest"]

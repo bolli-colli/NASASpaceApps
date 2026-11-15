@@ -1,0 +1,72 @@
+# Regions offered in the forms. bbox = [south, north, west, east] in degrees
+# (west/east negative = western hemisphere). Boxes must not cross the 180° meridian.
+#
+# The first five boxes are the proposals of spec section 11 (demo cases).
+# Boxes marked "PROPOSAL" are NOT in the spec: they are suggestions that fill the
+# student-mode categories of spec section 7 and must be confirmed by the team
+# before data is retrieved ("Regionsboxen ... werden vor dem Datenabruf festgelegt").
+
+regions:
+  # --- Demo A1 (spec 11) -------------------------------------------------------
+  - id: ohio_valley
+    name: Ohio Valley (USA, source region)
+    category: Industrial region
+    bbox: [37, 42, -88, -80]
+
+  - id: quebec_adirondacks
+    name: Québec / Adirondacks (downwind)
+    category: Industrial region
+    bbox: [44, 48, -78, -70]
+
+  - id: indo_gangetic_plain
+    name: Indo-Gangetic Plain (India)
+    category: Industrial region
+    bbox: [22, 30, 75, 88]
+
+  # --- Demo A2 (spec 11) -------------------------------------------------------
+  - id: alps
+    name: Alps
+    category: Mountains / glacier
+    bbox: [45.5, 47.5, 6, 13]
+
+  - id: central_himalaya
+    name: Central Himalaya
+    category: Mountains / glacier
+    bbox: [27, 30, 82, 88]
+
+  # --- Validation case V (spec 11) --------------------------------------------
+  - id: northern_hemisphere
+    name: Northern Hemisphere
+    category: Hemisphere
+    bbox: [0, 90, -180, 180]
+
+  # --- PROPOSALS for the student categories (not in the spec, to be confirmed) --
+  - id: beijing_tianjin
+    name: Beijing–Tianjin   # PROPOSAL
+    category: City
+    bbox: [38.5, 40.5, 115.5, 118]
+
+  - id: sahara
+    name: Central Sahara   # PROPOSAL
+    category: Desert
+    bbox: [18, 28, 0, 20]
+
+  - id: amazon
+    name: Amazon rainforest   # PROPOSAL
+    category: Rainforest
+    bbox: [-10, 0, -70, -55]
+
+  - id: mississippi_delta
+    name: Mississippi river mouth   # PROPOSAL (river mouth named in spec C1)
+    category: Coast / river mouth
+    bbox: [28, 30.5, -91.5, -88]
+
+  - id: ganges_delta
+    name: Ganges river mouth   # PROPOSAL (river mouth named in spec C1)
+    category: Coast / river mouth
+    bbox: [20.5, 23, 88, 91.5]
+
+  - id: north_pacific
+    name: Central North Pacific   # PROPOSAL
+    category: Ocean
+    bbox: [20, 30, -170, -150]
