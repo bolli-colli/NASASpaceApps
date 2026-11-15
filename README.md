@@ -4,7 +4,7 @@ Follow a pollutant through the water cycle – air → cloud → rain & snow →
 river & sea – and test every step for a trend.
 
 Built for the NASA Space Apps Challenge 2026, challenge *"Be An Earth System Trend
-Detective!"*. The specification is in [`specs/`](specs/) (German); the technical
+Detective!"*. The specification is in [`specs/`](specs/) (English translation and German original); the technical
 documentation is in [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md).
 
 **What it does**
